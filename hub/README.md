@@ -84,19 +84,30 @@ curl -X POST http://127.0.0.1:8780/v1/agents -H "Authorization: Bearer $TOKEN" -
 
 `switchboard-hub test-agent <url>` checks an agent's connection from the hub machine.
 
-## Deploy to a Linux machine (no root needed)
+## Install as a service on Linux (no root needed)
+
+New to this? The step-by-step [setup guide](../docs/setup-guide.md) covers everything, including Tailscale
+and Hermes.
+
+On the computer that will run the hub (needs Java 21: `sudo apt install openjdk-21-jdk`):
+
+```sh
+hub/deploy/install.sh [public-url]
+```
+
+Or from another computer, over SSH (downloads its own checksum-verified Java 21 runtime on the target):
 
 ```sh
 hub/deploy/deploy.sh <ssh-host> [public-url]
 ```
 
-The script builds locally and copies the bundle over SSH. On the target it installs:
-- a checksum-verified Java 21 runtime in `~/.local/share/switchboard-hub/jre`;
+Both install:
+- the Java runtime as `~/.local/share/switchboard-hub/jre`;
 - the hub in `~/.local/share/switchboard-hub/app`, with a `switchboard-hub` command in `~/.local/bin`;
 - a systemd **user** service (`deploy/switchboard-hub.service`), which starts at boot when lingering is
   on (`loginctl enable-linger <user>`).
 
-Running it again updates the hub; `~/.switchboard-hub` is never touched. On the machine:
+Running either again updates the hub; `~/.switchboard-hub` is never touched. On the machine:
 - `journalctl --user -u switchboard-hub -f` shows the log, including the setup code while there is no owner;
 - `systemctl --user restart switchboard-hub` restarts the hub.
 

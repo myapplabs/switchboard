@@ -2,64 +2,234 @@
 
 # Switchboard: Agent Hub
 
-**Share your self-hosted AI agents with the people you trust.** You run AI agents on your own machines;
-Switchboard puts them on everyone's phone. It works through a hub you host, with the permissions you
-choose, and you stay in the loop for anything risky.
+**Share your AI agents with the people you work and live with, from their phones, on your terms.**
 
-Website: [switchboard.applabs.llc](https://switchboard.applabs.llc)
+Website: [switchboard.applabs.llc](https://switchboard.applabs.llc) · Status: early (Android in private testing)
 
-## What it does
+- [What is Switchboard?](#what-is-switchboard)
+- [Is it right for me?](#is-it-right-for-me)
+- [How it works, in plain words](#how-it-works-in-plain-words)
+- [What you need](#what-you-need)
+- [What it costs](#what-it-costs)
+- [Setting it up](#setting-it-up)
+- [Using it day to day](#using-it-day-to-day)
+- [Who can do what](#who-can-do-what)
+- [Privacy and security](#privacy-and-security)
+- [Glossary](#glossary)
+- [Questions](#questions)
+- [For developers](#for-developers)
 
-- **Chat with your agents from anywhere.** Answers stream as they're written, tool activity shows as it
-  happens, you can switch models, and conversations are kept on your own hub.
-- **Share without sharing keys.** Invite people with a QR code or link. Roles (owner, admin, member,
-  restricted) and per-agent grants decide who may use which agent, tool level and model. Agent keys
-  never leave the hub.
-- **Approvals reach the right person.** When an agent wants to run something risky, someone allowed to
-  decide gets the request on their phone.
-- **A board where agents work together.** Give a card to one agent, or to several in turn. A
-  coordinator agent can plan the work into sub-cards; you approve the plan. Agents never mark their own
-  work done: every card ends in your review.
-- **Jobs, quick commands, Ask all.** Manage scheduled jobs, keep prompt templates, and ask several agents
-  the same question side by side.
-- **Private by design.** Passkeys instead of passwords. Push notifications carry no content. Each
-  member's chats and agent memory are separate.
+## What is Switchboard?
 
-Hermes Agent is supported today; the hub talks to agents through adapters, so other agent types can be
-added.
+An **AI agent** is an AI assistant that can also *do* things, not just chat: look things up on the web,
+read and write files, run programs, keep notes, and run scheduled tasks. Many people now run their own,
+such as [Hermes Agent](https://github.com/NousResearch/hermes-agent), on a computer at home or in the
+office.
 
-## How it fits together
+The trouble is sharing it. Giving your team or family the agent's password gives every one of them full
+control: they could use the expensive AI models, see each other's conversations, or let the agent delete
+files. Switchboard solves that:
+
+- **Everyone gets the Switchboard app** and signs in with a passkey (their fingerprint or face, no
+  password).
+- **You decide who may use which agent,** which AI models they may use, how much per day, and whether
+  the agent may run risky actions for them.
+- **Risky actions wait for a person.** If an agent wants to, say, delete files, the request appears on the
+  phone of someone allowed to approve it.
+- **Agents can work together on tasks** on a shared board, and you check the result before it counts as
+  done.
+- **Your data stays with you.** Conversations are stored on your own computer, not on ours.
+
+## Is it right for me?
+
+Switchboard is a good fit if:
+
+- you already run one or more AI agents (Hermes Agent today), or you're willing to set one up;
+- you want several people (staff, family, a small team) to use them safely from their phones;
+- you want to control costs and what the agents may do on each person's behalf;
+- you'd rather keep conversations on your own equipment than on someone else's cloud.
+
+It isn't the right fit (yet) if you want something that runs with no computer of your own: Switchboard
+needs one computer you own to stay on. A hosted version may come later.
+
+**About the technical side:** using Switchboard day to day is as simple as any chat app. *Setting it up*
+currently takes some technical steps, like typing commands into a computer's terminal, about an hour
+of work. If that's new to you, the [setup guide](docs/setup-guide.md) walks through every step, or a
+technically minded friend or IT person can do it once for you. A one-step installer is on the
+[roadmap](ROADMAP.md).
+
+## How it works, in plain words
+
+Think of an old telephone switchboard: callers don't dial each other directly; an operator connects
+each call to the right line, and only if they're allowed.
 
 ```
- phones (app)  ──HTTPS──▶  your hub  ──▶  your agents (Hermes Agent, …)
- passkeys, push            keys, rules,     on your machines, any models
-                           conversations
+   Your people's phones            Your computer               Your AI agents
+  ┌────────────────────┐        ┌─────────────────┐        ┌──────────────────┐
+  │  Switchboard app   │ ─────▶ │   the HUB       │ ─────▶ │  Hermes Agent …  │
+  │  (sign in with a   │ ◀───── │  (the operator) │ ◀───── │  on your machines│
+  │   passkey)         │        │                 │        │  using AI models │
+  └────────────────────┘        └─────────────────┘        └──────────────────┘
 ```
 
-The **hub** is a small server on a computer you own. Phones talk only to the hub, and the hub talks to
-your agents. The hub is usually reached privately over [Tailscale](https://tailscale.com).
+There are three parts:
 
-## This repository
+1. **The app**, on each person's phone. It only ever talks to your hub.
+2. **The hub**, a small program that runs on a computer you own, which stays on. It is the operator:
+   - it holds the agents' keys, so nobody else ever sees them;
+   - it checks who is allowed to do what;
+   - it passes messages between phones and agents;
+   - it stores the conversations.
+3. **Your agents,** running on your machines (the same computer, or others), using whichever AI models
+   you choose.
+
+**How phones reach the hub:** your hub isn't put on the open internet. Phones reach it privately
+through [Tailscale](https://tailscale.com), a free app that links your devices into a private network,
+like a VPN that just works. Everyone who uses your hub installs Tailscale once. After that, the app works
+at home, at the office, or on mobile data.
+
+**What the helper services do:** two small services run by AppLabs make the app work, and neither sees
+your conversations:
+- **switchboard.applabs.llc** vouches for the official app so phones allow passkey sign-in. It stores no
+  accounts or data.
+- **The push relay** delivers notifications. Your hub sends only "an approval is waiting" style notices,
+  never message content, and the app fetches the details from your hub.
+
+## What you need
+
+| | |
+|---|---|
+| **A computer that stays on** | For the hub. Tested on Linux (Ubuntu) on a small PC or mini PC (x86-64). It needs very little power: the hub uses about 256 MB of memory. Other systems are untested for now |
+| **An AI agent** | [Hermes Agent](https://github.com/NousResearch/hermes-agent), on that computer or another one you own, with an account at an AI provider (for example OpenRouter) or local models |
+| **Tailscale** | A free account, installed on the hub computer and on every phone that uses the hub |
+| **Android phones** | Android 8 or newer. iPhone support is planned |
+| **About an hour** | For the first setup (see [the setup guide](docs/setup-guide.md)) |
+
+## What it costs
+
+- **Switchboard:** free and open source. There's no subscription.
+- **Your computer:** whatever it costs to keep it running.
+- **AI usage:** you pay your AI provider for what your agents use, as you would anyway. Switchboard helps
+  keep this in check: per-person daily limits, which models each person may use, and limits on every
+  board card. Some providers also offer free models.
+- **Tailscale:** has a free plan for personal and small use; check
+  [their pricing](https://tailscale.com/pricing) for larger teams.
+
+## Setting it up
+
+The full walk-through, with every command explained, is in **[docs/setup-guide.md](docs/setup-guide.md)**.
+In short:
+
+1. **Install Tailscale** on the computer that will run the hub, and on your phone.
+2. **Install the hub** on that computer and start it. It shows a one-time **setup code**.
+3. **Turn on your agent's connection** (Hermes: give it an API key) so the hub can talk to it.
+4. **Install the app** on your phone, enter your hub's address and the setup code, and create your
+   passkey. You're now the **owner**.
+5. **Add your agent** in the app (Agents → Add agent).
+6. **Invite people** (Members → Invite) and decide what each of them may use (Members → Agent access).
+
+## Using it day to day
+
+- **Agents tab:** your agents, whether they're online, and what they're doing. Tap one to start a chat.
+  "Ask all agents…" sends the same question to several at once.
+- **Chats tab:** your conversations. You can share a conversation with chosen people or everyone.
+- **Board tab:** tasks for agents. Make a card, give it to one agent or several in turn (for example, a
+  research agent then a writing agent), and it moves through *Ready → Working → Review*. You read the
+  result and **accept** it, **send it back** with a note, or **close** it. Cards that need you (an
+  approval, a question, a problem) wait in **Needs you**. With a **coordinator** agent, you can let it
+  plan a bigger task into smaller ones; you approve its plan first.
+- **Jobs tab:** the agents' scheduled tasks, such as a daily summary. Pause, run now, edit or delete them.
+- **More:** members and invites, what each agent is good at, notifications, and your devices.
+
+**Notifications** tell you when an approval or a question is waiting, when a long answer is ready, and
+when a board card needs you or is ready for review.
+
+## Who can do what
+
+Everyone has a **role**:
+
+| Role | Can |
+|---|---|
+| **Owner** (you) | Everything: add agents, decide who uses which agent and model, approve anything, choose the coordinator |
+| **Admin** | Invite and manage members, approve anyone's requests, see everyone's board cards, describe agents |
+| **Member** | Use the agents they're given, approve their own requests, make board cards, share conversations |
+| **Restricted** (for example, children or guests) | Use only the agents they're given, on the safest settings; never approve risky actions; no jobs |
+
+On top of roles, **agent access** sets, per agent and per person or role: whether they may chat, which
+tool level the agent uses for them (for example, no terminal or file changes), which models, and a daily
+limit. Nobody gets access to anything unless you allow it.
+
+## Privacy and security
+
+- **Your conversations stay on your hub.** They aren't sent to AppLabs. (Your agents still send prompts to
+  whichever AI provider you've chosen, as they would anyway.)
+- **Agent keys never leave the hub.** Phones never see them.
+- **Passkeys instead of passwords.** Sign-in uses your phone's fingerprint or face; there's no password
+  to steal or reuse.
+- **Notifications carry no content.** Only "something is waiting"; the details come from your hub.
+- **Each person's chats are private** by default, and each person's agent memory is kept separate.
+- **Risky actions need a person's approval,** and only the owner can allow an agent to do something
+  "always".
+- **Activity log:** owners and admins can see who used which agent and model, and who approved what
+  (never the message content), for 90 days.
+- **Back up your hub.** Its data lives on your computer, so keeping a copy is up to you (see the setup
+  guide).
+
+Found a security problem? Please report it privately through this repository's **Security** tab
+("Report a vulnerability"), not in a public issue.
+
+## Glossary
+
+| Word | Meaning |
+|---|---|
+| **Agent** | An AI assistant that can take actions (search, files, programs, scheduled tasks), such as Hermes Agent |
+| **Hub** | The Switchboard program on your computer that connects phones to agents and enforces your rules |
+| **Model** | The AI "brain" an agent uses (for example a Claude, GPT, Gemini or open model); different models differ in skill and cost |
+| **Profile** | One of an agent's setups, usually a tool level (for example "safe": no terminal) |
+| **Passkey** | A sign-in that uses your phone's fingerprint or face lock instead of a password |
+| **Tailscale** | A free app that privately links your devices so phones can reach your hub from anywhere |
+| **Setup code** | A one-time code that makes your phone the hub's owner |
+| **Invite** | A one-time QR code or link (valid 24 hours) that lets someone join your hub |
+| **Approval** | A request from an agent to do something risky, waiting for a person's yes or no |
+| **Board / card** | Tasks for agents; each card moves from Ready to Working to Review, and ends with your decision |
+| **Coordinator** | An agent you allow to split a big card into smaller ones for other agents (after you approve its plan) |
+| **Push relay** | The AppLabs service that delivers notifications without seeing their content |
+
+## Questions
+
+**Do I need to be technical?** Not to use it. Setting up the hub currently does take some technical steps;
+see [the setup guide](docs/setup-guide.md), or ask someone to do it once for you.
+
+**Does AppLabs see my conversations or data?** No. They stay on your hub. AppLabs runs only the passkey
+domain and the push relay, which never receive message content.
+
+**What happens if my hub computer is off?** The app shows the hub as offline until it's back. Nothing is
+lost: conversations are stored on the hub, and agents' work continues when it returns.
+
+**Can my staff use it from home or on the road?** Yes, through Tailscale, from anywhere with internet.
+
+**What if someone leaves?** Remove them in Members; all their devices are signed out and their
+conversations deleted. Lost a phone? Sign that device out in More → Signed-in devices.
+
+**Can I limit spending?** Yes: per-person daily limits, which models each person may use, and limits on
+every board card.
+
+**Which agents does it work with?** Hermes Agent today. Others (OpenClaw, OpenAI-compatible agents) are
+on the [roadmap](ROADMAP.md).
+
+**iPhone?** Planned. The app is built for both; iPhone needs an App Store release first.
+
+## For developers
 
 | Folder | What |
 |---|---|
-| [`hub/`](hub) | The hub server, `switchboard-hub` (Kotlin, Ktor, SQLite). Start here to run your own |
+| [`hub/`](hub) | The hub server, `switchboard-hub` (Kotlin, Ktor, SQLite): configuration, deployment, passkeys |
 | [`app/`](app) | The Android and iOS app (Kotlin Multiplatform, Compose Multiplatform) |
 | [`api/`](api) | The API contract between the app and a hub (OpenAPI and event streams) |
 | [`push-relay/`](push-relay) | The relay that delivers content-free notifications from hubs to phones |
 | [`passkey-domain/`](passkey-domain) | The `switchboard.applabs.llc` website, which passkeys are bound to |
 
-## Status
-
-Early, and in daily use by its makers. The Android app is in private testing. The iOS app is written
-but not yet built or released. Expect breaking changes before 1.0. See [`ROADMAP.md`](ROADMAP.md).
-
-## Getting started
-
-1. Run a hub on a computer that stays on: see [`hub/README.md`](hub/README.md).
-2. Give a [Hermes Agent](https://github.com/NousResearch/hermes-agent) profile an API key, and add it to
-   the hub.
-3. Install the app, enter the hub's address and its setup code, and create your passkey.
+Plans: [ROADMAP.md](ROADMAP.md). Changes to `main` go through pull requests with passing CI.
 
 ## License
 
@@ -69,11 +239,6 @@ but not yet built or released. Expect breaking changes before 1.0. See [`ROADMAP
   **Apache License 2.0** ([`LICENSE`](LICENSE)), so you can build your own clients and tools freely.
 
 The licenses cover the code, not the Switchboard name or logo; see [`NOTICE`](NOTICE).
-
-## Security
-
-Please report vulnerabilities privately to AppLabs, LLC (see [applabs.llc](https://applabs.llc)) rather
-than in a public issue.
 
 ---
 
