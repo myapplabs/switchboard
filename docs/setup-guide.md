@@ -10,14 +10,16 @@ changes anything. Plan for about 20 minutes.
 - [Step 3: Add your agents](#step-3-add-your-agents)
 - [Step 4: Invite your people](#step-4-invite-your-people)
 - [Keeping it running](#keeping-it-running)
-- [Other ways to install](#other-ways-to-install)
+- [Windows](#windows)
+- [Docker](#docker)
 - [Troubleshooting](#troubleshooting)
 
 ## Before you start
 
 You need:
 - **A computer that can stay on.** Linux (for example Ubuntu, on a mini PC; Intel/AMD or ARM processors)
-  or a Mac with Apple silicon (M1 or newer). You'll need its administrator password once or twice.
+  or a Mac with Apple silicon (M1 or newer). You'll need its administrator password once or twice. On
+  Windows, an Intel Mac or a NAS, see [Windows](#windows) or [Docker](#docker) instead of Step 1.
 - **A free Tailscale account,** which the installer helps you create. Tailscale links your devices into
   a private network, so phones reach your hub from anywhere without it being on the open internet.
 - **An Android phone** (Android 8 or newer), with the **Switchboard** app and the **Tailscale** app. The
@@ -124,19 +126,79 @@ curl -fsSL https://switchboard.applabs.llc/install.sh | sh
 **On a Mac,** the hub runs while you're logged in. For an always-on hub, turn on automatic login (System
 Settings → Users & Groups) and stop the Mac from sleeping (System Settings → Energy).
 
-## Other ways to install
+## Windows
 
-**Docker** (for a NAS such as Synology or Unraid, or an Intel Mac):
+The hub doesn't run on Windows directly. These two ways should work, but we haven't tested them yet: if
+you try one, please tell us how it went in an [issue](https://github.com/myapplabs/switchboard/issues).
+
+### Option 1: WSL (Windows' built-in Linux)
+
+1. Open **PowerShell as administrator** (right-click Start → Terminal (Admin)) and run:
+
+   ```powershell
+   wsl --install -d Ubuntu
+   ```
+
+   Restart the PC when asked. Then open **Ubuntu** from the Start menu, and choose a username and password.
+2. In the Ubuntu window, run the installer, exactly as on Linux:
+
+   ```sh
+   curl -fsSL https://switchboard.applabs.llc/install.sh | sh
+   ```
+
+   It installs Tailscale inside Ubuntu, which shows up as its own device in your Tailscale network.
+3. If it says it **couldn't start the service**, Ubuntu's background services (systemd) are off. Open
+   its settings file with `sudo nano /etc/wsl.conf` and make sure it contains these two lines (keep any
+   other lines that are there):
+
+   ```
+   [boot]
+   systemd=true
+   ```
+
+   Save (`Ctrl` + `O`, `Enter`, `Ctrl` + `X`), run `wsl --shutdown` in PowerShell, reopen Ubuntu, and run
+   the installer command again.
+4. The hub runs while Ubuntu runs. Keep the Ubuntu window open (minimised is fine), because Windows may stop
+   Ubuntu when nothing is using it.
+
+### Option 2: Docker Desktop
+
+1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and the
+   [Tailscale app](https://tailscale.com/download/windows), and sign in to Tailscale. In the
+   [admin console](https://login.tailscale.com/admin/dns), turn on **MagicDNS** and **HTTPS Certificates**.
+2. Find this PC's Tailscale address: the Tailscale app shows the PC's name, and the full address is
+   `https://<name>.<your-tailnet>.ts.net` (the admin console's **Machines** page shows it).
+3. In **PowerShell**, start the hub, share it through Tailscale, and get your setup code (use your
+   address in the first command):
+
+   ```powershell
+   docker run -d --name switchboard-hub --restart unless-stopped -p 127.0.0.1:8780:8780 -v switchboard-hub:/data -e PUBLIC_URL=https://office-pc.your-tailnet.ts.net -e HUB_NAME=Office ghcr.io/myapplabs/switchboard-hub
+   tailscale serve --bg --https=443 http://127.0.0.1:8780
+   docker exec switchboard-hub /opt/switchboard-hub/app/bin/switchboard-hub setup-code
+   ```
+
+4. Continue with [Step 2: Pair your phone](#step-2-pair-your-phone).
+5. So the hub comes back after a restart: Docker Desktop → Settings → General → **Start Docker Desktop
+   when you sign in**.
+
+## Docker
+
+For a NAS (Synology, Unraid, …), an Intel Mac, or any computer with Docker. The image works on Intel/AMD
+and ARM.
 
 ```sh
-docker run -d --name switchboard-hub --restart unless-stopped -p 8780:8780 -v switchboard-hub:/data \
-  -e PUBLIC_URL=https://<the address phones use> -e HUB_NAME=Office ghcr.io/myapplabs/switchboard-hub
+docker run -d --name switchboard-hub --restart unless-stopped -p 127.0.0.1:8780:8780 \
+  -v switchboard-hub:/data -e PUBLIC_URL=https://<the address phones use> -e HUB_NAME=Office \
+  ghcr.io/myapplabs/switchboard-hub
 ```
 
-Give it an HTTPS address, for example with `tailscale serve --bg --https=443 http://127.0.0.1:8780` on
-the machine running Docker, and set `PUBLIC_URL` to that address. Get the setup code with
-`docker exec switchboard-hub /opt/switchboard-hub/app/bin/switchboard-hub setup-code`. Back up the
-`switchboard-hub` volume.
+- **Its address:** with Tailscale on the same machine, run
+  `tailscale serve --bg --https=443 http://127.0.0.1:8780`, and use that machine's Tailscale address,
+  `https://<name>.<your-tailnet>.ts.net`, as `PUBLIC_URL`.
+- **The setup code:** `docker exec switchboard-hub /opt/switchboard-hub/app/bin/switchboard-hub setup-code`.
+- **Backups:** back up the `switchboard-hub` volume; it holds everything.
+- **Updates:** `docker pull ghcr.io/myapplabs/switchboard-hub`, then remove the container and run the same
+  `docker run` again. Your data stays in the volume.
 
 **From source** (developers): see [`hub/README.md`](../hub/README.md).
 

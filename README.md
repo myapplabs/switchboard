@@ -115,22 +115,92 @@ your conversations:
 
 ## Setting it up
 
-On the computer that will run the hub, open a terminal and run:
+Setup has two parts: install the **hub** on a computer that stays on, then **pair your phone**. The
+[setup guide](docs/setup-guide.md) walks through everything step by step, in about 20 minutes.
+
+### 1. Install the hub on your computer
+
+| Your computer | How | Status |
+|---|---|---|
+| **Linux** (x86-64 or ARM 64-bit) | One command | Supported (tested on Ubuntu, Debian, Fedora) |
+| **Mac** with Apple silicon (M1 or newer) | One command | Supported |
+| **Intel Mac** | Docker Desktop | Works through Docker |
+| **Windows 10 or 11** | WSL or Docker Desktop | Possible, not tested yet |
+| **NAS** (Synology, Unraid, …) | Docker | Works through Docker |
+
+#### Linux
+
+Open a terminal (on Ubuntu: `Ctrl` + `Alt` + `T`) and run:
 
 ```sh
 curl -fsSL https://switchboard.applabs.llc/install.sh | sh
 ```
 
-It downloads the hub (and checks it's genuine), sets up Tailscale, connects Hermes if it's on that
-computer, starts the hub, and shows a QR code. It asks before changing anything outside Switchboard.
-Then:
+The installer:
+- downloads the hub, checks it's genuine, and installs it in your home folder (no administrator rights
+  needed for the hub itself);
+- installs and signs in to Tailscale if needed;
+- connects Hermes Agent if it's on this computer, asking first;
+- runs the hub as a background service that restarts by itself, and offers to start it when the computer
+  starts. That, and installing Tailscale, are the only steps that ask for your password;
+- ends with a QR code for your phone.
 
-1. **On your phone,** install Tailscale and Switchboard, and **scan the QR code** with the camera. Add
-   your name and create your passkey. You're now the **owner**.
-2. **Add more agents** if you have them (Agents → Add agent).
-3. **Invite people** (Members → Invite) and decide what each of them may use (Members → Agent access).
+It needs `curl`, which most systems have (if not: `sudo apt install curl`). It works on any Linux that
+uses systemd, which is almost all of them.
 
-The full walk-through is in **[docs/setup-guide.md](docs/setup-guide.md)**, including Docker for NAS devices.
+#### macOS (Apple silicon)
+
+1. Install the [Tailscale app](https://tailscale.com/download/mac), open it and sign in.
+2. Open **Terminal** (Applications → Utilities) and run:
+
+   ```sh
+   curl -fsSL https://switchboard.applabs.llc/install.sh | sh
+   ```
+
+The installer does the same as on Linux, and runs the hub in the background with the Mac's own service
+manager (launchd).
+
+**Keeping it on:** on a Mac, the hub runs while you're logged in. For an always-on hub:
+- turn on automatic login (System Settings → Users & Groups);
+- stop the Mac from sleeping (System Settings → Energy, or Battery on a laptop).
+
+**Intel Macs:** use [Docker Desktop](https://www.docker.com/products/docker-desktop/), the same way as on
+Windows (below).
+
+#### Windows
+
+The hub doesn't run on Windows directly, but it can run in either of the ways below. Neither is tested by
+us yet: if you try one, please tell us how it went in an
+[issue](https://github.com/myapplabs/switchboard/issues).
+
+- **WSL (Windows' built-in Linux):** install Ubuntu with `wsl --install -d Ubuntu` in PowerShell (as
+  administrator) and restart. Then open **Ubuntu** from the Start menu and run the Linux command above.
+  The hub runs while Ubuntu is running, so keep its window open (or minimised).
+- **Docker Desktop:** install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and the
+  [Tailscale app](https://tailscale.com/download/windows), then run the hub's Docker image.
+
+The [setup guide](docs/setup-guide.md#windows) has both, step by step.
+
+#### Docker (NAS devices and other systems)
+
+```sh
+docker run -d --name switchboard-hub --restart unless-stopped -p 127.0.0.1:8780:8780 \
+  -v switchboard-hub:/data -e PUBLIC_URL=https://<your hub's address> ghcr.io/myapplabs/switchboard-hub
+```
+
+See the [setup guide](docs/setup-guide.md#docker) for giving it its address with Tailscale.
+
+### 2. Pair your phone
+
+1. Install **Tailscale** and **Switchboard** on your phone, and sign in to Tailscale with the same
+   account.
+2. **Scan the QR code** the installer showed, with the phone's camera. Switchboard opens with everything
+   filled in; add your name and create your passkey. You're now the **owner**.
+
+### 3. Add agents and invite people
+
+- **Add more agents** if you have them (Agents → Add agent).
+- **Invite people** (Members → Invite), and decide what each of them may use (Members → Agent access).
 
 ## Using it day to day
 
