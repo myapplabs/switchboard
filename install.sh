@@ -90,7 +90,8 @@ case "$ARCH" in
 esac
 TARGET="$os-$arch"
 [ "$TARGET" = macos-x64 ] && die "Intel Macs aren't supported by the installer. Use the Docker image instead (see the README)."
-HOSTNAME_SHORT=$(hostname 2>/dev/null | cut -d. -f1); HOSTNAME_SHORT=${HOSTNAME_SHORT:-hub}
+# The agent's name in the app: this computer's short name (agent names are at most 40 characters).
+HOSTNAME_SHORT=$(hostname 2>/dev/null | cut -d. -f1 | cut -c1-24); HOSTNAME_SHORT=${HOSTNAME_SHORT:-hermes}
 
 # ── uninstall ───────────────────────────────────────────────────────────────
 

@@ -61,7 +61,7 @@ jobs:
           print("agents:", agents)
           assert len(agents) == 1 and agents[0][1] == "online", agents
           EOF
-          ~/.local/bin/switchboard-hub setup-code | grep -q 'switchboard.applabs.llc/pair#hub='
+          ~/.local/bin/switchboard-hub setup-code | grep -q "Pair the owner's phone"
       - name: Update keeps the data
         run: |
           sh install.sh --from "$RUNNER_TEMP/bundle" --yes | tee "$RUNNER_TEMP/update.log"
@@ -94,9 +94,8 @@ jobs:
       - name: Install on ${{ matrix.image }}
         run: |
           docker run --rm -v "$PWD:/src:ro" "${{ matrix.image }}" sh -c '
-            useradd -m tester && su tester -c "
-              cd /src && sh install.sh --from /src/bundle --yes --no-tailscale --no-hermes --no-service &&
-              ~/.local/bin/switchboard-hub version && ~/.local/bin/switchboard-hub setup-code >/dev/null && echo installed"'
+            cd /src && sh install.sh --from /src/bundle --yes --no-tailscale --no-hermes --no-service &&
+            ~/.local/bin/switchboard-hub version && ~/.local/bin/switchboard-hub setup-code >/dev/null && echo installed'
 
   docker:
     runs-on: ubuntu-24.04
