@@ -27,6 +27,10 @@
       {
         "source": "/join",
         "destination": "/join.html"
+      },
+      {
+        "source": "/pair",
+        "destination": "/pair.html"
       }
     ]
   }

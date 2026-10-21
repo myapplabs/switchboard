@@ -32,9 +32,11 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import llc.applabs.design.tokens.MonoLabel
 import llc.applabs.switchboard.ui.common.ErrorBanner
+import kotlinx.coroutines.launch
 
 @Composable
-fun ConnectScreen(viewModel: ConnectViewModel, devSignIn: Boolean) {
+fun ConnectScreen(viewModel: ConnectViewModel, devSignIn: Boolean, scanQr: (suspend () -> String?)? = null) {
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     val s by viewModel.state.collectAsState()
     val on = viewModel::onEvent
     Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
@@ -60,6 +62,12 @@ fun ConnectScreen(viewModel: ConnectViewModel, devSignIn: Boolean) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Field("Hub address or invite link", s.hubUrl, { on(ConnectUiEvent.HubUrl(it)) }, "e.g. mini-1.your-tailnet.ts.net", KeyboardType.Uri, "hub-url")
                     Primary("Continue", s.busy, s.hubUrl.isNotBlank()) { on(ConnectUiEvent.Continue) }
+                    scanQr?.let { scan ->
+                        OutlinedButton(onClick = { scope.launch { scan()?.let { on(ConnectUiEvent.Scanned(it)) } } },
+                            enabled = !s.busy, modifier = Modifier.fillMaxWidth().testTag("scan-qr")) { Text("Scan a QR code") }
+                        Text("The setup code on the hub computer, or an invite you were sent.", style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
                 ConnectStep.Choose -> {
                     s.hub?.let { Text("Hub ${it.hubVersion} at ${s.hubUrl}", style = MonoLabel, color = MaterialTheme.colorScheme.onSurfaceVariant) }

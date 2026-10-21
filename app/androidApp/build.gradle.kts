@@ -16,6 +16,7 @@ dependencies {
     implementation(libs.androidx.credentials.play.services)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+    implementation(libs.play.services.code.scanner)
     implementation(libs.kotlinx.coroutines.play.services)
 }
 

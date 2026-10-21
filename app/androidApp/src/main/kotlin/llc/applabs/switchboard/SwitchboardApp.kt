@@ -19,6 +19,7 @@ class SwitchboardApp : Application() {
             devSignIn = BuildConfig.DEV_SIGN_IN,
             deviceName = (Build.MODEL ?: "Android").take(60),
             pushTokens = FcmTokens(),
+            scanQr = { scanQrCode(this) },
         )
     }
 
