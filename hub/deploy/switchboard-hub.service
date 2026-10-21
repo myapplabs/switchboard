@@ -12,6 +12,7 @@ Environment=SWITCHBOARD_HUB_DATA=%h/.switchboard-hub
 Environment="JAVA_OPTS=-Xmx256m -XX:+UseSerialGC"
 ExecStart=%h/.local/share/switchboard-hub/app/bin/switchboard-hub serve
 Restart=on-failure
+UMask=0077
 RestartSec=5
 
 [Install]

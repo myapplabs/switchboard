@@ -17,7 +17,8 @@ changes anything. Plan for about 20 minutes.
 ## Before you start
 
 You need:
-- **A computer that can stay on.** Linux (for example Ubuntu, on a mini PC; Intel/AMD or ARM processors)
+- **A computer that can stay on.** For the best protection, a small computer that runs only the hub, with
+  your agents on other computers (see [SECURITY.md](../SECURITY.md)). Linux (for example Ubuntu, on a mini PC; Intel/AMD or ARM processors)
   or a Mac with Apple silicon (M1 or newer). You'll need its administrator password once or twice. On
   Windows, an Intel Mac or a NAS, see [Windows](#windows) or [Docker](#docker) instead of Step 1.
 - **A free Tailscale account,** which the installer helps you create. Tailscale links your devices into
@@ -42,6 +43,9 @@ It explains each step as it goes, and asks before changing anything outside Swit
 
 1. **Downloads the hub** for this computer and checks that the download is genuine, signed by AppLabs.
    Nothing else needs installing: the hub brings everything it needs.
+   - On Linux it gives the hub **its own locked-down account** (asking for your administrator password),
+     so no AI agent on the computer can read the hub's keys or conversations.
+   - On a Mac the hub runs in your account for now; see [SECURITY.md](../SECURITY.md).
 2. **Tailscale:** installs it if needed (on a Mac, it asks you to install the Tailscale app), and has
    you sign in by opening a link.
    - If HTTPS isn't on for your Tailscale network yet, it asks you to turn on **MagicDNS** and **HTTPS
@@ -51,8 +55,8 @@ It explains each step as it goes, and asks before changing anything outside Swit
 3. **Asks what to call the hub,** for example "Office" or "Home". People see this name in the app.
 4. **Hermes Agent:** if Hermes is on this computer, it offers to connect it. It gives Hermes an API key
    (keeping a backup of Hermes's settings file first), restarts Hermes, and adds it to the hub.
-5. **Starts the hub** in the background, so it keeps running and restarts by itself. On Linux it also
-   offers to start the hub when the computer starts.
+5. **Starts the hub** in the background, so it keeps running and restarts by itself, and starts with the
+   computer (on a Mac, when you log in).
 6. **Shows a QR code:** the one-time setup code for your phone.
 
 ## Step 2: Pair your phone
@@ -63,7 +67,7 @@ It explains each step as it goes, and asks before changing anything outside Swit
 3. Enter your name, tap **Create passkey and pair**, and confirm with your fingerprint or face.
 
 You're now the hub's **owner**. Lost the QR code, or got a new phone later? On the hub computer run
-`~/.local/bin/switchboard-hub setup-code` for a new one. On an already-paired hub, use **Owner: add this phone with a
+`sudo switchboard-hub setup-code` (on a Mac: `~/.local/bin/switchboard-hub setup-code`) for a new one. On an already-paired hub, use **Owner: add this phone with a
 setup code** in the app.
 
 ## Step 3: Add your agents
@@ -78,6 +82,9 @@ If the installer connected Hermes, your agent is already in the **Agents** tab. 
    with `tailscale serve --bg --https=443 http://127.0.0.1:8642`.
 3. In the app: **Agents → Add agent**. For **Address**, enter that computer's Tailscale address (for
    example `https://office-pc.your-tailnet.ts.net`); for **API key**, the key from step 1.
+
+**Before sharing an agent with others,** read [Sharing agents safely](../SECURITY.md#sharing-agents-safely):
+give them a profile with only the access they need.
 
 Then describe what each agent is good at in **More → What agents are good at**. That helps people, and
 the coordinator, pick the right agent for each task.
@@ -104,9 +111,10 @@ Roles in short:
 
 ## Keeping it running
 
-**Back up** the folder `~/.switchboard-hub` on the hub computer regularly, for example to a USB drive. It
-holds everything: conversations, settings and the encrypted agent keys. The files `hub.db` and
-`master.key` must be backed up **together**.
+**Back up** the hub's data folder regularly, for example to a USB drive: `/var/lib/switchboard-hub` on
+Linux (copy it with `sudo`), `~/.switchboard-hub` on a Mac. It holds everything: conversations, settings
+and the encrypted agent keys. The files `hub.db` and `master.key` must be backed up **together**, and the
+backup kept as safe as the hub itself.
 
 **Update** by running the installer again. It updates the hub in place and keeps your data and settings:
 
@@ -118,9 +126,9 @@ curl -fsSL https://switchboard.applabs.llc/install.sh | sh
 
 | To | Linux | Mac |
 |---|---|---|
-| Get a new setup code | `~/.local/bin/switchboard-hub setup-code` | same |
-| See what the hub is doing | `journalctl --user -u switchboard-hub -f` | `tail -f ~/Library/Logs/switchboard-hub.log` |
-| Restart it | `systemctl --user restart switchboard-hub` | `launchctl kickstart -k gui/$(id -u)/llc.applabs.switchboard-hub` |
+| Get a new setup code | `sudo switchboard-hub setup-code` | `~/.local/bin/switchboard-hub setup-code` |
+| See what the hub is doing | `sudo journalctl -u switchboard-hub -f` | `tail -f ~/Library/Logs/switchboard-hub.log` |
+| Restart it | `sudo systemctl restart switchboard-hub` | `launchctl kickstart -k gui/$(id -u)/llc.applabs.switchboard-hub` |
 | Remove it (keeps your data) | `curl -fsSL https://switchboard.applabs.llc/install.sh \| sh -s -- --uninstall` | same |
 
 **On a Mac,** the hub runs while you're logged in. For an always-on hub, turn on automatic login (System

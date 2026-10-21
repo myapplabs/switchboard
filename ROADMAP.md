@@ -19,6 +19,7 @@ Where Switchboard is going. Plans change; issues and discussions are welcome.
 
 - **Releases:** Android on Google Play (testing first, then public), iOS on the App Store.
 - **Easier hosting:** an option to reach a hub without Tailscale, and Windows.
+- **Security:** a dedicated hub account on macOS (as on Linux), and an independent security review before 1.0.
 - **More agents:** OpenClaw and OpenAI-compatible agents through new adapters.
 - **More from the phone:** the share sheet, voice, widgets, several hubs in one app.
 

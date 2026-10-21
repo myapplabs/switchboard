@@ -137,12 +137,12 @@ curl -fsSL https://switchboard.applabs.llc/install.sh | sh
 ```
 
 The installer:
-- downloads the hub, checks it's genuine, and installs it in your home folder (no administrator rights
-  needed for the hub itself);
+- downloads the hub and checks it's genuine;
+- gives the hub **its own locked-down account**, so no AI agent on the computer can read its keys or
+  conversations. This needs your administrator password once;
 - installs and signs in to Tailscale if needed;
 - connects Hermes Agent if it's on this computer, asking first;
-- runs the hub as a background service that restarts by itself, and offers to start it when the computer
-  starts. That, and installing Tailscale, are the only steps that ask for your password;
+- runs the hub as a background service that starts with the computer and restarts by itself;
 - ends with a QR code for your phone.
 
 It needs `curl`, which most systems have (if not: `sudo apt install curl`). It works on any Linux that
@@ -158,7 +158,9 @@ uses systemd, which is almost all of them.
    ```
 
 The installer does the same as on Linux, and runs the hub in the background with the Mac's own service
-manager (launchd).
+manager (launchd). One difference: on a Mac the hub runs in **your** account for now, so agents running as
+you could read its data. Run your agents on another computer or under another macOS user (see
+[SECURITY.md](SECURITY.md)).
 
 **Keeping it on:** on a Mac, the hub runs while you're logged in. For an always-on hub:
 - turn on automatic login (System Settings → Users & Groups);
@@ -237,7 +239,8 @@ limit. Nobody gets access to anything unless you allow it.
 
 - **Your conversations stay on your hub.** They aren't sent to AppLabs. (Your agents still send prompts to
   whichever AI provider you've chosen, as they would anyway.)
-- **Agent keys never leave the hub.** Phones never see them.
+- **Agent keys stay on the hub,** encrypted, and phones never see them. On Linux the hub runs in its own
+  locked-down account, so AI agents on the same computer can't read its keys or conversations either.
 - **Passkeys instead of passwords.** Sign-in uses your phone's fingerprint or face; there's no password
   to steal or reuse.
 - **Notifications carry no content.** Only "something is waiting"; the details come from your hub.
@@ -248,6 +251,12 @@ limit. Nobody gets access to anything unless you allow it.
   (never the message content), for 90 days.
 - **Back up your hub.** Its data lives on your computer, so keeping a copy is up to you (see the setup
   guide).
+
+**What Switchboard can't control:** what an agent itself can reach on its computer. Anyone you give an
+agent to can ask it to use its tools (run commands, read files). Share powerful agents only with people
+you'd trust with that computer, or give them a sandboxed profile that only sees what they need. For the
+best protection, run the hub on its own small computer. **[SECURITY.md](SECURITY.md)** explains this, and
+the recommended setups, in plain words.
 
 Found a security problem? Please report it privately through this repository's **Security** tab
 ("Report a vulnerability"), not in a public issue.

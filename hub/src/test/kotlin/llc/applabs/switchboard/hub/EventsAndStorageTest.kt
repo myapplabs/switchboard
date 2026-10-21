@@ -79,4 +79,14 @@ class EventsAndStorageTest {
             assertEquals(listOf("hub"), db.query("SELECT DISTINCT \"table\" FROM pragma_foreign_key_list('user')") { it.getString(1) })
         }
     }
+
+    @Test fun `the data folder is made private at startup, also for older installs`() {
+        val dir = Files.createTempDirectory("hub")
+        Files.setPosixFilePermissions(dir, PosixFilePermissions.fromString("rwxrwxr-x"))
+        val db = Files.writeString(dir.resolve("hub.db"), "x")
+        Files.setPosixFilePermissions(db, PosixFilePermissions.fromString("rw-rw-r--"))
+        restrictDataDir(dir)
+        assertEquals("rwx------", PosixFilePermissions.toString(Files.getPosixFilePermissions(dir)))
+        assertEquals("rw-------", PosixFilePermissions.toString(Files.getPosixFilePermissions(db)))
+    }
 }

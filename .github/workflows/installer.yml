@@ -14,14 +14,12 @@ concurrency:
 env:
   MODULES: java.base,java.desktop,java.instrument,java.management,java.naming,java.security.jgss,java.sql,jdk.jfr,jdk.net,jdk.unsupported,jdk.crypto.ec
 jobs:
-  install:
+  # The default on Linux: the hub in its own locked-down account ("switchboard").
+  own-account:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { runner: ubuntu-24.04, target: linux-x64 }
-          - { runner: ubuntu-24.04-arm, target: linux-arm64 }
-          - { runner: macos-15, target: macos-arm64 }
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     steps:
@@ -35,6 +33,69 @@ jobs:
           mkdir -p "$RUNNER_TEMP/bundle"
           cp -R hub/build/install/switchboard-hub "$RUNNER_TEMP/bundle/app"
           jlink --add-modules "$MODULES" --strip-debug --no-man-pages --no-header-files --compress zip-6 --output "$RUNNER_TEMP/bundle/runtime"
+      - name: A Hermes Agent to connect (stand-in)
+        run: |
+          mkdir -p "$HOME/.hermes" && printf 'OPENROUTER_API_KEY=placeholder\n' > "$HOME/.hermes/.env"
+          echo "$PWD/.github/installer-test" >> "$GITHUB_PATH"
+      - name: Install
+        run: sh install.sh --from "$RUNNER_TEMP/bundle" --yes --no-tailscale
+      - name: The hub runs in its own account, and nobody else can read its data
+        run: |
+          curl -fsS http://127.0.0.1:8780/v1/hub | tee /dev/stderr | grep -q '"setup_required":true'
+          systemctl is-active switchboard-hub
+          test "$(systemctl show -p User --value switchboard-hub)" = switchboard
+          test "$(stat -c '%U %a' /var/lib/switchboard-hub)" = "switchboard 700"
+          test "$(sudo stat -c '%U %a' /var/lib/switchboard-hub/master.key)" = "switchboard 600"
+          test "$(sudo stat -c '%a' /var/lib/switchboard-hub/hub.db)" = 600
+          if cat /var/lib/switchboard-hub/master.key >/dev/null 2>&1; then echo "readable by $USER"; exit 1; fi
+          if ls /var/lib/switchboard-hub >/dev/null 2>&1; then echo "listable by $USER"; exit 1; fi
+          test "$(stat -c %U /opt/switchboard-hub/app)" = root
+          test ! -e "$HOME/.switchboard-hub"
+      - name: Hermes is connected; hub commands go through sudo
+        run: |
+          grep -q '^API_SERVER_KEY=' "$HOME/.hermes/.env"
+          ls -a "$HOME/.hermes" | grep -q 'before-switchboard'
+          grep -q 'gateway restart' "$HOME/hermes-calls.log"
+          sudo python3 - <<'EOF'
+          import sqlite3
+          agents = sqlite3.connect("/var/lib/switchboard-hub/hub.db").execute("select name, status from agent").fetchall()
+          print("agents:", agents)
+          assert len(agents) == 1 and agents[0][1] == "online", agents
+          EOF
+          switchboard-hub setup-code | grep -q "Pair the owner's phone"
+          switchboard-hub version
+      - name: Update keeps the data
+        run: |
+          sh install.sh --from "$RUNNER_TEMP/bundle" --yes | tee "$RUNNER_TEMP/update.log"
+          grep -q 'The hub is updated' "$RUNNER_TEMP/update.log"
+          curl -fsS http://127.0.0.1:8780/v1/hub >/dev/null
+          test "$(systemctl show -p User --value switchboard-hub)" = switchboard
+      - name: Uninstall keeps the data
+        run: |
+          sh install.sh --uninstall --yes
+          test ! -e /opt/switchboard-hub && test ! -e /usr/local/bin/switchboard-hub
+          sudo test -f /var/lib/switchboard-hub/hub.db
+          if curl -fsS --max-time 3 http://127.0.0.1:8780/v1/hub >/dev/null 2>&1; then echo "the hub still answers"; exit 1; fi
+
+  # A hub installed in someone's own account (before 0.2) moves into its own account, leaving nothing behind.
+  migrate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with: { distribution: temurin, java-version: "21" }
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - name: Build the bundle (as release.yml does)
+        run: |
+          (cd hub && ./gradlew installDist --no-daemon -q)
+          mkdir -p "$RUNNER_TEMP/bundle"
+          cp -R hub/build/install/switchboard-hub "$RUNNER_TEMP/bundle/app"
+          jlink --add-modules "$MODULES" --strip-debug --no-man-pages --no-header-files --compress zip-6 --output "$RUNNER_TEMP/bundle/runtime"
+      - name: A Hermes Agent to connect (stand-in)
+        run: |
+          mkdir -p "$HOME/.hermes" && printf 'OPENROUTER_API_KEY=placeholder\n' > "$HOME/.hermes/.env"
+          echo "$PWD/.github/installer-test" >> "$GITHUB_PATH"
       - name: A user systemd session (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -42,29 +103,75 @@ jobs:
           echo "XDG_RUNTIME_DIR=/run/user/$(id -u)" >> "$GITHUB_ENV"
           echo "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus" >> "$GITHUB_ENV"
           for i in $(seq 1 20); do [ -S "/run/user/$(id -u)/bus" ] && break; sleep 1; done
+      - name: An older install in the user's account, with an agent
+        run: |
+          sh install.sh --from "$RUNNER_TEMP/bundle" --yes --no-tailscale --user-mode
+          echo fake > "$HOME/.switchboard-hub/dev-token"
+      - name: The installer moves it
+        run: |
+          sh install.sh --from "$RUNNER_TEMP/bundle" --yes --no-tailscale | tee "$RUNNER_TEMP/move.log"
+          grep -q 'moved into its own account' "$RUNNER_TEMP/move.log"
+          test ! -e "$HOME/.switchboard-hub" && test ! -e "$HOME/.local/share/switchboard-hub"
+          test ! -e "$HOME/.config/systemd/user/switchboard-hub.service"
+          sudo test ! -e /var/lib/switchboard-hub/dev-token
+          curl -fsS http://127.0.0.1:8780/v1/hub >/dev/null
+          test "$(systemctl show -p User --value switchboard-hub)" = switchboard
+          sudo python3 -c "import sqlite3; a=sqlite3.connect('/var/lib/switchboard-hub/hub.db').execute('select count(*) from agent').fetchone()[0]; print('agents', a); assert a == 1"
+
+  # The hub in the user's own account: macOS today, and Linux with --user-mode.
+  user-mode:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: ubuntu-24.04, flags: "--user-mode" }
+          - { runner: macos-15, flags: "" }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with: { distribution: temurin, java-version: "21" }
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - name: Build the bundle (as release.yml does)
+        run: |
+          (cd hub && ./gradlew installDist --no-daemon -q)
+          mkdir -p "$RUNNER_TEMP/bundle"
+          cp -R hub/build/install/switchboard-hub "$RUNNER_TEMP/bundle/app"
+          jlink --add-modules "$MODULES" --strip-debug --no-man-pages --no-header-files --compress zip-6 --output "$RUNNER_TEMP/bundle/runtime"
       - name: A Hermes Agent to connect (stand-in)
         run: |
           mkdir -p "$HOME/.hermes" && printf 'OPENROUTER_API_KEY=placeholder\n' > "$HOME/.hermes/.env"
           echo "$PWD/.github/installer-test" >> "$GITHUB_PATH"
+      - name: A user systemd session (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo loginctl enable-linger "$USER"
+          echo "XDG_RUNTIME_DIR=/run/user/$(id -u)" >> "$GITHUB_ENV"
+          echo "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus" >> "$GITHUB_ENV"
+          for i in $(seq 1 20); do [ -S "/run/user/$(id -u)/bus" ] && break; sleep 1; done
       - name: Install
-        run: sh install.sh --from "$RUNNER_TEMP/bundle" --yes --no-tailscale
-      - name: The hub answers, and Hermes is connected
+        run: sh install.sh --from "$RUNNER_TEMP/bundle" --yes --no-tailscale ${{ matrix.flags }}
+      - name: The hub answers, its files are private, and Hermes is connected
         run: |
           curl -fsS http://127.0.0.1:8780/v1/hub | tee /dev/stderr | grep -q '"setup_required":true'
           grep -q '^API_SERVER_KEY=' "$HOME/.hermes/.env"
           ls -a "$HOME/.hermes" | grep -q 'before-switchboard'
           grep -q 'gateway restart' "$HOME/hermes-calls.log"
           python3 - <<'EOF'
-          import os, sqlite3
-          db = sqlite3.connect(os.path.expanduser("~/.switchboard-hub/hub.db"))
-          agents = db.execute("select name, status from agent").fetchall()
+          import os, sqlite3, stat
+          d = os.path.expanduser("~/.switchboard-hub")
+          assert stat.S_IMODE(os.stat(d).st_mode) == 0o700, oct(os.stat(d).st_mode)
+          for f in ("hub.db", "master.key", "config.json"):
+              assert stat.S_IMODE(os.stat(os.path.join(d, f)).st_mode) == 0o600, f
+          agents = sqlite3.connect(os.path.join(d, "hub.db")).execute("select name, status from agent").fetchall()
           print("agents:", agents)
           assert len(agents) == 1 and agents[0][1] == "online", agents
           EOF
           ~/.local/bin/switchboard-hub setup-code | grep -q "Pair the owner's phone"
       - name: Update keeps the data
         run: |
-          sh install.sh --from "$RUNNER_TEMP/bundle" --yes | tee "$RUNNER_TEMP/update.log"
+          sh install.sh --from "$RUNNER_TEMP/bundle" --yes ${{ matrix.flags }} | tee "$RUNNER_TEMP/update.log"
           grep -q 'The hub is updated' "$RUNNER_TEMP/update.log"
           curl -fsS http://127.0.0.1:8780/v1/hub >/dev/null
       - name: Uninstall keeps the data
@@ -94,7 +201,7 @@ jobs:
       - name: Install on ${{ matrix.image }}
         run: |
           docker run --rm -v "$PWD:/src:ro" "${{ matrix.image }}" sh -c '
-            cd /src && sh install.sh --from /src/bundle --yes --no-tailscale --no-hermes --no-service &&
+            cd /src && sh install.sh --from /src/bundle --yes --no-tailscale --no-hermes --no-service --user-mode &&
             ~/.local/bin/switchboard-hub version && ~/.local/bin/switchboard-hub setup-code >/dev/null && echo installed'
 
   docker:
