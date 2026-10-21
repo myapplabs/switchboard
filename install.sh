@@ -71,6 +71,17 @@ ask_text() {
 }
 pause() { [ "$YES" = 1 ] || [ "$TTY" = 0 ] && return 0; printf '    %s' "$1" >/dev/tty; read -r _ </dev/tty || true; }
 
+# launchd (macOS): bootout is asynchronous, and a bootstrap right after it fails ("5: Input/output error").
+launchd_stop() {
+  launchctl bootout "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || return 0
+  i=0; while launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1 && [ $i -lt 20 ]; do sleep 0.5; i=$((i + 1)); done
+}
+launchd_start() { # launchd_start PLIST
+  i=0; until launchctl bootstrap "gui/$(id -u)" "$1" 2>/dev/null; do
+    i=$((i + 1)); [ $i -ge 5 ] && return 1; sleep 2
+  done
+}
+
 json_get() { # json_get KEY < json → the first string value of "KEY" (enough for tailscale's status output)
   sed -n "s/.*\"$1\": *\"\([^\"]*\)\".*/\1/p" | head -n 1
 }
@@ -101,7 +112,7 @@ if [ "$UNINSTALL" = 1 ]; then
     systemctl --user disable --now switchboard-hub >/dev/null 2>&1 || true
     rm -f "$HOME/.config/systemd/user/switchboard-hub.service"; systemctl --user daemon-reload >/dev/null 2>&1 || true
   elif [ "$os" = macos ]; then
-    launchctl bootout "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true
+    launchd_stop
     rm -f "$HOME/Library/LaunchAgents/$LABEL.plist"
   fi
   rm -rf "$BASE" "$BIN/switchboard-hub"
@@ -150,7 +161,9 @@ step "Installing into $BASE"
 mkdir -p "$BASE" "$BIN"
 rm -rf "$BASE/app.new" "$BASE/jre.new"
 cp -R "$SRC/app" "$BASE/app.new"; cp -R "$SRC/runtime" "$BASE/jre.new"
-[ "$UPDATE" = 1 ] && [ "$SERVICE" = 1 ] && { systemctl --user stop switchboard-hub >/dev/null 2>&1 || launchctl bootout "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true; }
+if [ "$UPDATE" = 1 ] && [ "$SERVICE" = 1 ]; then
+  if [ "$os" = linux ]; then systemctl --user stop switchboard-hub >/dev/null 2>&1 || true; else launchd_stop; fi
+fi
 rm -rf "$BASE/app" "$BASE/jre"; mv "$BASE/app.new" "$BASE/app"; mv "$BASE/jre.new" "$BASE/jre"
 cat > "$BIN/switchboard-hub" <<'WRAP'
 #!/bin/sh
@@ -341,8 +354,8 @@ UNIT
   <key>StandardErrorPath</key><string>$HOME/Library/Logs/switchboard-hub.log</string>
 </dict></plist>
 PLIST
-    launchctl bootout "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true
-    launchctl bootstrap "gui/$(id -u)" "$plist" || die "Couldn't start the hub with launchd."
+    launchd_stop
+    launchd_start "$plist" || die "Couldn't start the hub with launchd. Try: launchctl bootstrap gui/$(id -u) $plist"
     say "On a Mac the hub runs while you're logged in. For an always-on hub, turn on automatic login"
     say "(System Settings → Users & Groups) and keep the Mac from sleeping (System Settings → Energy)."
   fi
