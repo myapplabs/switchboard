@@ -7,6 +7,7 @@ Wants=network-online.target
 
 [Service]
 Environment=JAVA_HOME=%h/.local/share/switchboard-hub/jre
+Environment=SWITCHBOARD_HUB_DATA=%h/.switchboard-hub
 # Small heap: the hub is light, and these machines also run Hermes.
 Environment="JAVA_OPTS=-Xmx256m -XX:+UseSerialGC"
 ExecStart=%h/.local/share/switchboard-hub/app/bin/switchboard-hub serve

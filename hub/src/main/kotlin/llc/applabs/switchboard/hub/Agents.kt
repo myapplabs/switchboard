@@ -59,6 +59,20 @@ class Agents(
 
     suspend fun add(user: HubUser, input: AgentInput): AgentOut {
         requireOwner(user)
+        val id = insert(user.hubId, user.userId, input)
+        record(id)?.let { events.publish(viewers(it), "agent.changed", mapOf("agent_id" to id)) }
+        onChanged(id)
+        return get(user, id)
+    }
+
+    /**
+     * For the installer (`switchboard-hub add-agent`), which runs on the hub machine before anyone has paired:
+     * the same connection test and encrypted storage, without a signed-in owner. The running hub picks the
+     * agent up when it restarts.
+     */
+    suspend fun addForHub(hubId: String, input: AgentInput): String = insert(hubId, null, input)
+
+    private suspend fun insert(hubId: String, actorUserId: String?, input: AgentInput): String {
         val adapter = validate(input)
         val test = adapter.test(input.profiles.map { ProfileTarget(it.name, profileUrl(input.baseUrl, it.port), it.apiKey) })
         if (!test.ok) throw failedTest(test)
@@ -67,21 +81,19 @@ class Agents(
         db.tx { c ->
             c.prepareStatement("""INSERT INTO agent (id, hub_id, type, name, base_url, status, capabilities_json, last_seen_at, created_at, updated_at)
                                   VALUES (?, ?, ?, ?, ?, 'online', ?, ?, ?, ?)""").use {
-                Db.bind(it, arrayOf<Any?>(id, user.hubId, input.type, input.name.trim(), input.baseUrl.trimEnd('/'),
+                Db.bind(it, arrayOf<Any?>(id, hubId, input.type, input.name.trim(), input.baseUrl.trimEnd('/'),
                     hubJson.encodeToString(Capabilities.serializer(), test.capabilities ?: Capabilities()), t, t, t)); it.executeUpdate()
             }
             input.profiles.forEachIndexed { i, p ->
                 c.prepareStatement("""INSERT INTO agent_profile (id, hub_id, agent_id, name, port, api_key_encrypted, key_last4, toolset_summary, position)
                                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""").use {
-                    Db.bind(it, arrayOf<Any?>(newId("prf"), user.hubId, id, p.name.trim(), p.port, secrets.seal(p.apiKey),
+                    Db.bind(it, arrayOf<Any?>(newId("prf"), hubId, id, p.name.trim(), p.port, secrets.seal(p.apiKey),
                         p.apiKey.takeLast(4), p.toolsetSummary, i)); it.executeUpdate()
                 }
             }
         }
-        accounts.activity(user.hubId, user.userId, id, "agent_added", """{"type":"${input.type}"}""")
-        record(id)?.let { events.publish(viewers(it), "agent.changed", mapOf("agent_id" to id)) }
-        onChanged(id)
-        return get(user, id)
+        accounts.activity(hubId, actorUserId, id, "agent_added", """{"type":"${input.type}"}""")
+        return id
     }
 
     suspend fun update(user: HubUser, id: String, patch: AgentPatch): AgentOut {

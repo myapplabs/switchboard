@@ -73,7 +73,7 @@ object Routes {
  */
 @Composable
 fun App(deps: AppDependencies, inviteLink: String? = null, openSession: String? = null, onSessionOpened: () -> Unit = {},
-        openTask: String? = null, onTaskOpened: () -> Unit = {}) {
+        openTask: String? = null, onTaskOpened: () -> Unit = {}, pairLink: String? = null) {
     AppLabsTheme {
         val auth by deps.auth.state.collectAsState()
         LaunchedEffect(Unit) { deps.auth.restore() }
@@ -82,7 +82,8 @@ fun App(deps: AppDependencies, inviteLink: String? = null, openSession: String? 
             is AuthState.SignedOut -> {
                 val vm = viewModel(key = "connect") { ConnectViewModel(deps.auth, deps.deviceName, a.hubUrl) }
                 LaunchedEffect(inviteLink) { inviteLink?.let { vm.onEvent(llc.applabs.switchboard.ui.connect.ConnectUiEvent.InviteLink(it)) } }
-                ConnectScreen(vm, deps.devSignIn)
+                LaunchedEffect(pairLink) { pairLink?.let { vm.onEvent(llc.applabs.switchboard.ui.connect.ConnectUiEvent.PairLink(it)) } }
+                ConnectScreen(vm, deps.devSignIn, deps.scanQr)
             }
             is AuthState.SignedIn -> Main(deps, a.me, a.hubUrl, openSession, onSessionOpened, openTask, onTaskOpened)
         }

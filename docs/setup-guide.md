@@ -1,263 +1,166 @@
 # Setting up Switchboard, step by step
 
 This guide takes you from nothing to your whole team using your AI agents from their phones. It's
-written for people who aren't developers: every command is explained, and you can copy and paste each one.
-Plan for about an hour.
-
-**If you get stuck,** any technically minded friend or IT person can follow this guide for you. You only
-need to do it once.
+written for people who aren't developers: one command does the technical part, and it asks before it
+changes anything. Plan for about 20 minutes.
 
 - [Before you start](#before-you-start)
-- [Step 1: Tailscale (the private network)](#step-1-tailscale-the-private-network)
-- [Step 2: Your AI agent](#step-2-your-ai-agent)
-- [Step 3: Install the hub](#step-3-install-the-hub)
-- [Step 4: Give the hub its secure address](#step-4-give-the-hub-its-secure-address)
-- [Step 5: Connect your phone](#step-5-connect-your-phone)
-- [Step 6: Add your agent](#step-6-add-your-agent)
-- [Step 7: Invite your people](#step-7-invite-your-people)
-- [Step 8: Notifications](#step-8-notifications)
+- [Step 1: Run the installer on the hub computer](#step-1-run-the-installer-on-the-hub-computer)
+- [Step 2: Pair your phone](#step-2-pair-your-phone)
+- [Step 3: Add your agents](#step-3-add-your-agents)
+- [Step 4: Invite your people](#step-4-invite-your-people)
 - [Keeping it running](#keeping-it-running)
+- [Other ways to install](#other-ways-to-install)
 - [Troubleshooting](#troubleshooting)
 
 ## Before you start
 
 You need:
-- **A computer that can stay on,** running Linux (Ubuntu 24.04 or newer is what we test). A small mini PC
-  is plenty. You'll need its administrator password once or twice.
-- **An Android phone** (Android 8 or newer).
-- **The Switchboard app.** It's in private testing: ask AppLabs ([applabs.llc](https://applabs.llc)) to
-  add you. It will be on Google Play soon.
+- **A computer that can stay on.** Linux (for example Ubuntu, on a mini PC; Intel/AMD or ARM processors)
+  or a Mac with Apple silicon (M1 or newer). You'll need its administrator password once or twice.
+- **A free Tailscale account,** which the installer helps you create. Tailscale links your devices into
+  a private network, so phones reach your hub from anywhere without it being on the open internet.
+- **An Android phone** (Android 8 or newer), with the **Switchboard** app and the **Tailscale** app. The
+  Switchboard app is in private testing: ask AppLabs ([applabs.llc](https://applabs.llc)) to add you. It
+  will be on Google Play soon.
+- **Your AI agent,** [Hermes Agent](https://github.com/NousResearch/hermes-agent), installed and working.
+  If it's on the hub computer, the installer connects it for you.
 
-**How to type commands:** on the Ubuntu computer, open the **Terminal** app (press `Ctrl` + `Alt` + `T`).
-Type or paste a command, press `Enter`, and wait for it to finish. If a command asks for your password,
-type it (you won't see the letters) and press `Enter`.
+**How to type a command:** on Ubuntu, open the **Terminal** app (press `Ctrl` + `Alt` + `T`); on a Mac,
+open **Terminal** (in Applications → Utilities). Paste the command, press `Enter`, and answer its
+questions. If it asks for your password, type it (you won't see the letters) and press `Enter`.
 
-## Step 1: Tailscale (the private network)
-
-Tailscale lets your phones reach the hub privately from anywhere, without opening your computer to the
-internet.
-
-1. On the hub computer, install Tailscale and sign in:
-
-   ```sh
-   curl -fsSL https://tailscale.com/install.sh | sh
-   sudo tailscale up --operator=$USER
-   ```
-
-   The first line installs Tailscale. The second connects this computer and prints a **login link**:
-   open it in a browser and sign in (create a free account if you don't have one).
-
-2. In the [Tailscale admin console](https://login.tailscale.com/admin/dns), under **DNS**, turn on
-   **MagicDNS** and **HTTPS Certificates**. This gives your computer a secure web address.
-
-3. On your phone, install **Tailscale** from Google Play and sign in with the **same** account.
-
-Find your computer's Tailscale name: run `tailscale status`. The first line shows it, for example
-`mini-1`. Your hub's address will be `https://mini-1.<your-tailnet>.ts.net`. The full name is in the
-admin console under **Machines**.
-
-## Step 2: Your AI agent
-
-Switchboard works with [Hermes Agent](https://github.com/NousResearch/hermes-agent). If it isn't
-installed yet, follow Hermes's own instructions first, and make sure you can chat with it.
-
-Then give Hermes an **API key**, a long password that only the hub will know, so the hub may talk to it:
-
-1. Make a key:
-
-   ```sh
-   openssl rand -hex 32
-   ```
-
-   This prints a long random line of letters and numbers. Copy it, and keep it private.
-
-2. Add it to your Hermes profile's settings file, `~/.hermes/.env` (for a named profile:
-   `~/.hermes/profiles/<name>/.env`). Open it with a text editor, for example:
-
-   ```sh
-   nano ~/.hermes/.env
-   ```
-
-   Add this line at the end, with your key after the `=`:
-
-   ```
-   API_SERVER_KEY=paste-your-key-here
-   ```
-
-   Save with `Ctrl` + `O`, `Enter`, then leave with `Ctrl` + `X`.
-
-3. Restart Hermes so it notices:
-
-   ```sh
-   hermes gateway restart
-   ```
-
-4. Check it answers. This should print `{"status": "ok", …}`:
-
-   ```sh
-   curl http://127.0.0.1:8642/health
-   ```
-
-**Agent on a different computer?** Do this step on that computer. Install Tailscale there too (Step 1),
-then run `tailscale serve --bg --https=443 http://127.0.0.1:8642` on it, so the hub can reach it securely
-at `https://<that-computer>.<your-tailnet>.ts.net`.
-
-## Step 3: Install the hub
-
-On the hub computer:
-
-1. Install the tools the hub needs (Git, to download it, and Java 21, to run it):
-
-   ```sh
-   sudo apt update && sudo apt install -y git openjdk-21-jdk
-   ```
-
-2. Download Switchboard:
-
-   ```sh
-   git clone https://github.com/myapplabs/switchboard.git
-   cd switchboard
-   ```
-
-3. Install and start the hub, giving it the address from Step 1:
-
-   ```sh
-   hub/deploy/install.sh https://mini-1.your-tailnet.ts.net
-   ```
-
-   The first time takes a few minutes. When it says **"The hub is running"**, it's done. It will also
-   start by itself if it ever stops.
-
-4. So the hub also starts when the computer restarts, before anyone logs in, run once:
-
-   ```sh
-   sudo loginctl enable-linger $USER
-   ```
-
-## Step 4: Give the hub its secure address
-
-The hub listens only on the computer itself. This command lets Tailscale give it its secure address:
+## Step 1: Run the installer on the hub computer
 
 ```sh
-tailscale serve --bg --https=443 http://127.0.0.1:8780
+curl -fsSL https://switchboard.applabs.llc/install.sh | sh
 ```
 
-Check it from your phone's browser, with Tailscale on: open `https://mini-1.<your-tailnet>.ts.net/v1/hub`.
-You should see a short line of text starting with `{"name":"Home"`.
+It explains each step as it goes, and asks before changing anything outside Switchboard:
 
-## Step 5: Connect your phone
+1. **Downloads the hub** for this computer and checks that the download is genuine, signed by AppLabs.
+   Nothing else needs installing: the hub brings everything it needs.
+2. **Tailscale:** installs it if needed (on a Mac, it asks you to install the Tailscale app), and has
+   you sign in by opening a link.
+   - If HTTPS isn't on for your Tailscale network yet, it asks you to turn on **MagicDNS** and **HTTPS
+     Certificates** in the [Tailscale admin console](https://login.tailscale.com/admin/dns), then
+     continues.
+   - It then gives the hub its private, secure address, like `https://mini-1.your-tailnet.ts.net`.
+3. **Asks what to call the hub,** for example "Office" or "Home". People see this name in the app.
+4. **Hermes Agent:** if Hermes is on this computer, it offers to connect it. It gives Hermes an API key
+   (keeping a backup of Hermes's settings file first), restarts Hermes, and adds it to the hub.
+5. **Starts the hub** in the background, so it keeps running and restarts by itself. On Linux it also
+   offers to start the hub when the computer starts.
+6. **Shows a QR code:** the one-time setup code for your phone.
 
-1. On the hub computer, get your one-time **setup code**:
+## Step 2: Pair your phone
 
-   ```sh
-   ~/.local/bin/switchboard-hub setup-code
-   ```
+1. On your phone, open **Tailscale**, sign in with the same account, and make sure it's on.
+2. **Scan the QR code** on the hub computer's screen with your phone's camera (or open Switchboard and tap
+   **Scan a QR code**). Switchboard opens with your hub and the code filled in.
+3. Enter your name, tap **Create passkey and pair**, and confirm with your fingerprint or face.
 
-   It looks like `ABCD-EFGH`.
+You're now the hub's **owner**. Lost the QR code, or got a new phone later? On the hub computer run
+`~/.local/bin/switchboard-hub setup-code` for a new one. On an already-paired hub, use **Owner: add this phone with a
+setup code** in the app.
 
-2. On your phone, make sure Tailscale is on, then open **Switchboard**.
-3. Enter your hub's address (`mini-1.<your-tailnet>.ts.net`) and tap **Continue**.
-4. Enter the setup code and your name, then tap **Create passkey and pair**. Confirm with your fingerprint
-   or face.
+## Step 3: Add your agents
 
-You're now the hub's **owner**. If you get a new phone later, run the setup-code command again and use
-**Owner: add this phone with a setup code** in the app.
+If the installer connected Hermes, your agent is already in the **Agents** tab. Tap it to chat.
 
-## Step 6: Add your agent
+**To add an agent on another computer:**
+1. On that computer, give Hermes an API key. Make one with `openssl rand -hex 32`, add a line
+   `API_SERVER_KEY=<the key>` to Hermes's settings file `~/.hermes/.env` (for a named profile,
+   `~/.hermes/profiles/<name>/.env`), and restart it with `hermes gateway restart`.
+2. Install Tailscale on that computer too (sign in with the same account), and share Hermes privately
+   with `tailscale serve --bg --https=443 http://127.0.0.1:8642`.
+3. In the app: **Agents → Add agent**. For **Address**, enter that computer's Tailscale address (for
+   example `https://office-pc.your-tailnet.ts.net`); for **API key**, the key from step 1.
 
-In the app: **Agents → Add agent**.
+Then describe what each agent is good at in **More → What agents are good at**. That helps people, and
+the coordinator, pick the right agent for each task.
 
-- **Name:** anything you like, for example `office-assistant`.
-- **Address:** `127.0.0.1:8642` if Hermes runs on the hub computer, otherwise its Tailscale address from
-  Step 2.
-- **API key:** the key you made in Step 2.
+## Step 4: Invite your people
 
-The hub tests the connection before saving it. The agent then shows as **Online**: tap it to chat.
-
-Then tell everyone what each agent is good at in **More → What agents are good at**. This helps people,
-and the coordinator, pick the right agent for each task.
-
-## Step 7: Invite your people
-
-1. **Share the hub computer with them in Tailscale:** in the admin console, open **Machines**, click
-   your hub computer's menu (`…`), choose **Share**, and send the invite. Each person installs Tailscale
-   on their phone and accepts it. (On a paid Tailscale plan you can add them to your network instead.)
-2. **Invite them in Switchboard:** **Members → Invite**, choose their role, and show them the QR code or
+1. **Share the hub computer with them in Tailscale.** In the admin console, open **Machines**, click the
+   hub computer's menu (`…`), choose **Share**, and send the invite. Each person installs Tailscale on
+   their phone and accepts it.
+2. **Invite them in Switchboard:** **Members → Invite**. Choose their role, and show them the QR code or
    send the link. It works once, for 24 hours.
-3. They install Switchboard, open the link (or enter the code), and create their passkey.
+3. They install Switchboard, scan or open the invite, and create their passkey.
 4. **Decide what they may use:** **Members → Agent access**. Nobody can use an agent until you allow it.
-   For each agent you choose per role or person: chat, the tool level, which models, and a daily limit.
+   For each agent, choose per role or person: chat, the tool level, which models, and a daily limit.
 
-Roles in short: **admins** help manage people, **members** use what you give them, and **restricted**
-people (for example children or guests) get only the safest settings and can never approve risky
-actions.
+Roles in short:
+- **Admins** help manage people.
+- **Members** use what you give them.
+- **Restricted** people (for example children or guests) get only the safest settings and can never
+  approve risky actions.
 
-## Step 8: Notifications
-
-So phones are told when an approval, a question or a finished task is waiting, connect your hub to the
-Switchboard push relay. Open the hub's settings file:
-
-```sh
-nano ~/.switchboard-hub/config.json
-```
-
-Add this line inside the braces, after the `"port"` line:
-
-```
-    "pushRelayUrl": "https://switchboard-push-relay.vercel.app",
-```
-
-Save (`Ctrl` + `O`, `Enter`, `Ctrl` + `X`), then restart the hub:
-
-```sh
-systemctl --user restart switchboard-hub
-```
-
-Notifications never contain your messages, only that something is waiting. Each person can choose which
-kinds they get in **More → Notifications on this device**.
+**Notifications** are on: phones are told when an approval, a question or a finished task is waiting
+(never the content). Each person chooses which kinds in **More → Notifications on this device**.
 
 ## Keeping it running
 
-**Back up** the folder `~/.switchboard-hub` regularly (for example, copy it to a USB drive or another
-computer). It holds everything: conversations, settings, and the encrypted agent keys. The files
-`hub.db` and `master.key` must be backed up **together**.
+**Back up** the folder `~/.switchboard-hub` on the hub computer regularly, for example to a USB drive. It
+holds everything: conversations, settings and the encrypted agent keys. The files `hub.db` and
+`master.key` must be backed up **together**.
 
-**Update** the hub when a new version comes out:
+**Update** by running the installer again. It updates the hub in place and keeps your data and settings:
 
 ```sh
-cd ~/switchboard
-git pull
-hub/deploy/install.sh
+curl -fsSL https://switchboard.applabs.llc/install.sh | sh
 ```
 
-Your data and settings are kept.
+**Useful commands** on the hub computer:
 
-**Useful commands:**
+| To | Linux | Mac |
+|---|---|---|
+| Get a new setup code | `~/.local/bin/switchboard-hub setup-code` | same |
+| See what the hub is doing | `journalctl --user -u switchboard-hub -f` | `tail -f ~/Library/Logs/switchboard-hub.log` |
+| Restart it | `systemctl --user restart switchboard-hub` | `launchctl kickstart -k gui/$(id -u)/llc.applabs.switchboard-hub` |
+| Remove it (keeps your data) | `curl -fsSL https://switchboard.applabs.llc/install.sh \| sh -s -- --uninstall` | same |
 
-| To | Run |
-|---|---|
-| See if the hub is running | `systemctl --user status switchboard-hub` |
-| See what it's doing (`Ctrl` + `C` to stop watching) | `journalctl --user -u switchboard-hub -f` |
-| Restart it | `systemctl --user restart switchboard-hub` |
-| Get a new setup code | `~/.local/bin/switchboard-hub setup-code` |
+**On a Mac,** the hub runs while you're logged in. For an always-on hub, turn on automatic login (System
+Settings → Users & Groups) and stop the Mac from sleeping (System Settings → Energy).
+
+## Other ways to install
+
+**Docker** (for a NAS such as Synology or Unraid, or an Intel Mac):
+
+```sh
+docker run -d --name switchboard-hub --restart unless-stopped -p 8780:8780 -v switchboard-hub:/data \
+  -e PUBLIC_URL=https://<the address phones use> -e HUB_NAME=Office ghcr.io/myapplabs/switchboard-hub
+```
+
+Give it an HTTPS address, for example with `tailscale serve --bg --https=443 http://127.0.0.1:8780` on
+the machine running Docker, and set `PUBLIC_URL` to that address. Get the setup code with
+`docker exec switchboard-hub /opt/switchboard-hub/app/bin/switchboard-hub setup-code`. Back up the
+`switchboard-hub` volume.
+
+**From source** (developers): see [`hub/README.md`](../hub/README.md).
 
 ## Troubleshooting
 
+**The installer stopped with an error.** It says what went wrong; fix that and run it again. It picks up
+where it left off and never deletes your data.
+
 **The app says it can't reach the hub.**
-- Is Tailscale on, on the phone? Is the hub computer on?
-- Is the hub running? `systemctl --user status switchboard-hub` should say *active (running)*.
-- Did you run Step 4's `tailscale serve` command? `tailscale serve status` should show your address.
+- Is Tailscale on, on the phone? Is the hub computer on and awake?
+- On the hub computer, `curl http://127.0.0.1:8780/v1/hub` should print a line starting with
+  `{"name":`. If not, see what the hub is doing (commands above).
+- `tailscale serve status` should show your hub's address.
 
-**Adding the agent fails.**
-- "Key rejected": the API key in the app doesn't match `API_SERVER_KEY` in Hermes's `.env`.
-- "Can't reach": check Step 2's `curl http://127.0.0.1:8642/health` on the agent's computer. For an agent
-  on another computer, check its Tailscale address from the hub computer.
+**Adding an agent fails.**
+- "Key rejected": the API key doesn't match `API_SERVER_KEY` in that Hermes's `.env`.
+- "Can't reach": on the agent's computer, `curl http://127.0.0.1:8642/health` should answer
+  `{"status": "ok", …}`; from the hub computer, check its Tailscale address.
 
-**The passkey screen doesn't appear or fails.** Make sure you're using the official app from AppLabs, and
-that the phone has a screen lock (fingerprint, face or PIN) and is signed in to a Google account.
+**The passkey step fails.** Use the official Switchboard app from AppLabs, and make sure the phone has a
+screen lock (fingerprint, face or PIN) and is signed in to a Google account.
 
-**An invitee can't connect.** They need Tailscale with your shared computer accepted (Step 7, part 1)
-before the Switchboard invite works.
+**Someone you invited can't connect.** They need Tailscale with your shared computer accepted (Step 4,
+part 1) before the Switchboard invite works.
 
 **Still stuck?** Open an issue on [GitHub](https://github.com/myapplabs/switchboard/issues). Leave out
 keys, codes and addresses.

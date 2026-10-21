@@ -5,3 +5,6 @@ __pycache__/
 
 # Vercel project link (per machine)
 .vercel/
+
+# Copied from install.sh when the website is deployed (firebase.json predeploy)
+passkey-domain/public/install.sh

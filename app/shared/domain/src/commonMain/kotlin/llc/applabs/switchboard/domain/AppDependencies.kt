@@ -21,4 +21,6 @@ interface AppDependencies {
     val devSignIn: Boolean
     /** A name for this device in the hub's device list (e.g. "Pixel 9"). */
     val deviceName: String
+    /** Scans a QR code with the camera and returns its text (null: cancelled); null where scanning isn't available. */
+    val scanQr: (suspend () -> String?)? get() = null
 }

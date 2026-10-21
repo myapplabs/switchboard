@@ -13,4 +13,9 @@ class InviteLinkTest {
         assertNull(ConnectViewModel.parseInviteLink("https://switchboard.applabs.llc/join"))
         assertNull(ConnectViewModel.parseInviteLink("10.0.0.158:8780"))
     }
+
+    @Test fun `the hub's pairing QR code links carry the hub and the setup code the same way`() {
+        assertEquals("https://mini-1.your-tailnet.ts.net" to "ABCD-EFGH",
+            ConnectViewModel.parseInviteLink("https://switchboard.applabs.llc/pair#hub=https%3A%2F%2Fmini-1.your-tailnet.ts.net&code=ABCD-EFGH"))
+    }
 }

@@ -35,6 +35,7 @@ if [ ! -d "$base/jre" ] || [ -L "$base/jre" ]; then ln -sfn "$java_home" "$base/
 cat > "$HOME/.local/bin/switchboard-hub" <<'WRAP'
 #!/bin/sh
 export JAVA_HOME="$HOME/.local/share/switchboard-hub/jre"
+export SWITCHBOARD_HUB_DATA="${SWITCHBOARD_HUB_DATA:-$HOME/.switchboard-hub}"
 exec "$HOME/.local/share/switchboard-hub/app/bin/switchboard-hub" "$@"
 WRAP
 chmod 755 "$HOME/.local/bin/switchboard-hub"

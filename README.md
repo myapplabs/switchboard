@@ -52,11 +52,9 @@ Switchboard is a good fit if:
 It isn't the right fit (yet) if you want something that runs with no computer of your own: Switchboard
 needs one computer you own to stay on. A hosted version may come later.
 
-**About the technical side:** using Switchboard day to day is as simple as any chat app. *Setting it up*
-currently takes some technical steps, like typing commands into a computer's terminal, about an hour
-of work. If that's new to you, the [setup guide](docs/setup-guide.md) walks through every step, or a
-technically minded friend or IT person can do it once for you. A one-step installer is on the
-[roadmap](ROADMAP.md).
+**About the technical side:** using Switchboard day to day is as simple as any chat app. Setting it up
+takes one command on the hub computer, which asks a few questions and does the rest, then you scan a QR
+code with your phone. The [setup guide](docs/setup-guide.md) walks through it, about 20 minutes.
 
 ## How it works, in plain words
 
@@ -99,11 +97,11 @@ your conversations:
 
 | | |
 |---|---|
-| **A computer that stays on** | For the hub. Tested on Linux (Ubuntu) on a small PC or mini PC (x86-64). It needs very little power: the hub uses about 256 MB of memory. Other systems are untested for now |
+| **A computer that stays on** | For the hub: Linux (a small PC or mini PC, Intel/AMD or ARM) or a Mac with Apple silicon. It needs very little: the hub uses about 256 MB of memory. A Docker image covers NAS devices and other systems |
 | **An AI agent** | [Hermes Agent](https://github.com/NousResearch/hermes-agent), on that computer or another one you own, with an account at an AI provider (for example OpenRouter) or local models |
 | **Tailscale** | A free account, installed on the hub computer and on every phone that uses the hub |
 | **Android phones** | Android 8 or newer. iPhone support is planned |
-| **About an hour** | For the first setup (see [the setup guide](docs/setup-guide.md)) |
+| **About 20 minutes** | For the first setup (see [the setup guide](docs/setup-guide.md)) |
 
 ## What it costs
 
@@ -117,16 +115,22 @@ your conversations:
 
 ## Setting it up
 
-The full walk-through, with every command explained, is in **[docs/setup-guide.md](docs/setup-guide.md)**.
-In short:
+On the computer that will run the hub, open a terminal and run:
 
-1. **Install Tailscale** on the computer that will run the hub, and on your phone.
-2. **Install the hub** on that computer and start it. It shows a one-time **setup code**.
-3. **Turn on your agent's connection** (Hermes: give it an API key) so the hub can talk to it.
-4. **Install the app** on your phone, enter your hub's address and the setup code, and create your
-   passkey. You're now the **owner**.
-5. **Add your agent** in the app (Agents → Add agent).
-6. **Invite people** (Members → Invite) and decide what each of them may use (Members → Agent access).
+```sh
+curl -fsSL https://switchboard.applabs.llc/install.sh | sh
+```
+
+It downloads the hub (and checks it's genuine), sets up Tailscale, connects Hermes if it's on that
+computer, starts the hub, and shows a QR code. It asks before changing anything outside Switchboard.
+Then:
+
+1. **On your phone,** install Tailscale and Switchboard, and **scan the QR code** with the camera. Add
+   your name and create your passkey. You're now the **owner**.
+2. **Add more agents** if you have them (Agents → Add agent).
+3. **Invite people** (Members → Invite) and decide what each of them may use (Members → Agent access).
+
+The full walk-through is in **[docs/setup-guide.md](docs/setup-guide.md)**, including Docker for NAS devices.
 
 ## Using it day to day
 
@@ -197,8 +201,8 @@ Found a security problem? Please report it privately through this repository's *
 
 ## Questions
 
-**Do I need to be technical?** Not to use it. Setting up the hub currently does take some technical steps;
-see [the setup guide](docs/setup-guide.md), or ask someone to do it once for you.
+**Do I need to be technical?** No. Setup is one command that asks a few questions, then a QR code you
+scan; see [the setup guide](docs/setup-guide.md). If you've never used a terminal, the guide shows how.
 
 **Does AppLabs see my conversations or data?** No. They stay on your hub. AppLabs runs only the passkey
 domain and the push relay, which never receive message content.

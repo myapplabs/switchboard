@@ -34,6 +34,10 @@ sealed interface ConnectUiEvent {
     data class Token(val value: String) : ConnectUiEvent
     /** A pasted or opened invite link: `https://switchboard.applabs.llc/join#hub=…&code=…`. */
     data class InviteLink(val link: String) : ConnectUiEvent
+    /** The owner's pairing link from the hub machine's QR code: `https://switchboard.applabs.llc/pair#hub=…&code=…`. */
+    data class PairLink(val link: String) : ConnectUiEvent
+    /** Whatever a scanned QR code held: an invite link, a pairing link, or a hub address. */
+    data class Scanned(val text: String) : ConnectUiEvent
     data object Continue : ConnectUiEvent
     data object ChoosePasskey : ConnectUiEvent
     data object ChooseJoin : ConnectUiEvent
@@ -58,6 +62,7 @@ class ConnectViewModel(private val auth: AuthRepository, private val deviceName:
         when (e) {
             is ConnectUiEvent.HubUrl ->
                 if (e.value.contains("/join") && parseInviteLink(e.value) != null) onEvent(ConnectUiEvent.InviteLink(e.value))
+                else if (e.value.contains("/pair") && parseInviteLink(e.value) != null) onEvent(ConnectUiEvent.PairLink(e.value))
                 else _state.update { it.copy(hubUrl = e.value, error = null) }
             is ConnectUiEvent.Code -> _state.update { it.copy(code = e.value, error = null) }
             is ConnectUiEvent.Name -> _state.update { it.copy(name = e.value, error = null) }
@@ -65,6 +70,17 @@ class ConnectViewModel(private val auth: AuthRepository, private val deviceName:
             is ConnectUiEvent.InviteLink -> parseInviteLink(e.link)?.let { (hub, code) ->
                 _state.update { it.copy(hubUrl = hub, code = code, step = ConnectStep.Join, invite = null) }
                 probe(then = { onEvent(ConnectUiEvent.PreviewInvite) })
+            }
+            is ConnectUiEvent.PairLink -> parseInviteLink(e.link)?.let { (hub, code) ->
+                _state.update { it.copy(hubUrl = hub, code = code, invite = null) }
+                probe(then = { _state.update { it.copy(step = ConnectStep.PairOwner, code = code) } })
+            }
+            is ConnectUiEvent.Scanned -> e.text.trim().let { t ->
+                when {
+                    t.contains("/join") && parseInviteLink(t) != null -> onEvent(ConnectUiEvent.InviteLink(t))
+                    t.contains("/pair") && parseInviteLink(t) != null -> onEvent(ConnectUiEvent.PairLink(t))
+                    else -> { _state.update { it.copy(hubUrl = t, error = null) }; onEvent(ConnectUiEvent.Continue) }
+                }
             }
             ConnectUiEvent.Continue -> probe()
             ConnectUiEvent.ChoosePasskey -> run { auth.signInWithPasskey(_state.value.hubUrl, deviceName) }
@@ -134,7 +150,7 @@ class ConnectViewModel(private val auth: AuthRepository, private val deviceName:
     }
 
     companion object {
-        /** `https://switchboard.applabs.llc/join#hub=<encoded>&code=<code>` → (hub, code). */
+        /** `https://switchboard.applabs.llc/join#hub=<encoded>&code=<code>` (or `/pair#…`) → (hub, code). */
         fun parseInviteLink(link: String): Pair<String, String>? {
             val fragment = link.substringAfter('#', "").ifEmpty { link.substringAfter('?', "") }
             val params = fragment.split('&').mapNotNull { p -> p.split('=', limit = 2).takeIf { it.size == 2 }?.let { it[0] to decode(it[1]) } }.toMap()

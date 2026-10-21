@@ -1,0 +1,121 @@
+# The one-step installer (install.sh) on clean machines, on every pull request: install from a fresh build
+# with the real background service and a stand-in Hermes (.github/installer-test/), check the hub answers and
+# Hermes was connected (key added, backup kept, agent on the hub), then update and uninstall. Also the
+# install on Debian and Fedora, and the Docker image. Releases themselves are tested in release.yml.
+name: Installer
+on:
+  push: { branches: [main] }
+  pull_request:
+  workflow_dispatch:
+permissions: { contents: read }
+concurrency:
+  group: installer-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  MODULES: java.base,java.desktop,java.instrument,java.management,java.naming,java.security.jgss,java.sql,jdk.jfr,jdk.net,jdk.unsupported,jdk.crypto.ec
+jobs:
+  install:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: ubuntu-24.04, target: linux-x64 }
+          - { runner: ubuntu-24.04-arm, target: linux-arm64 }
+          - { runner: macos-15, target: macos-arm64 }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with: { distribution: temurin, java-version: "21" }
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - name: Build the bundle (as release.yml does)
+        run: |
+          (cd hub && ./gradlew installDist --no-daemon -q)
+          mkdir -p "$RUNNER_TEMP/bundle"
+          cp -R hub/build/install/switchboard-hub "$RUNNER_TEMP/bundle/app"
+          jlink --add-modules "$MODULES" --strip-debug --no-man-pages --no-header-files --compress zip-6 --output "$RUNNER_TEMP/bundle/runtime"
+      - name: A user systemd session (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo loginctl enable-linger "$USER"
+          echo "XDG_RUNTIME_DIR=/run/user/$(id -u)" >> "$GITHUB_ENV"
+          echo "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus" >> "$GITHUB_ENV"
+          for i in $(seq 1 20); do [ -S "/run/user/$(id -u)/bus" ] && break; sleep 1; done
+      - name: A Hermes Agent to connect (stand-in)
+        run: |
+          mkdir -p "$HOME/.hermes" && printf 'OPENROUTER_API_KEY=placeholder\n' > "$HOME/.hermes/.env"
+          echo "$PWD/.github/installer-test" >> "$GITHUB_PATH"
+      - name: Install
+        run: sh install.sh --from "$RUNNER_TEMP/bundle" --yes --no-tailscale
+      - name: The hub answers, and Hermes is connected
+        run: |
+          curl -fsS http://127.0.0.1:8780/v1/hub | tee /dev/stderr | grep -q '"setup_required":true'
+          grep -q '^API_SERVER_KEY=' "$HOME/.hermes/.env"
+          ls -a "$HOME/.hermes" | grep -q 'before-switchboard'
+          grep -q 'gateway restart' "$HOME/hermes-calls.log"
+          python3 - <<'EOF'
+          import os, sqlite3
+          db = sqlite3.connect(os.path.expanduser("~/.switchboard-hub/hub.db"))
+          agents = db.execute("select name, status from agent").fetchall()
+          print("agents:", agents)
+          assert len(agents) == 1 and agents[0][1] == "online", agents
+          EOF
+          ~/.local/bin/switchboard-hub setup-code | grep -q "Pair the owner's phone"
+      - name: Update keeps the data
+        run: |
+          sh install.sh --from "$RUNNER_TEMP/bundle" --yes | tee "$RUNNER_TEMP/update.log"
+          grep -q 'The hub is updated' "$RUNNER_TEMP/update.log"
+          curl -fsS http://127.0.0.1:8780/v1/hub >/dev/null
+      - name: Uninstall keeps the data
+        run: |
+          sh install.sh --uninstall --yes
+          test ! -e "$HOME/.local/share/switchboard-hub"
+          test -f "$HOME/.switchboard-hub/hub.db"
+          if curl -fsS --max-time 3 http://127.0.0.1:8780/v1/hub >/dev/null 2>&1; then echo "the hub still answers"; exit 1; fi
+
+  distros:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["debian:13-slim", "fedora:42"]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with: { distribution: temurin, java-version: "21" }
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - name: Build the bundle
+        run: |
+          (cd hub && ./gradlew installDist --no-daemon -q)
+          mkdir -p bundle && cp -R hub/build/install/switchboard-hub bundle/app
+          jlink --add-modules "$MODULES" --strip-debug --no-man-pages --no-header-files --compress zip-6 --output bundle/runtime
+      - name: Install on ${{ matrix.image }}
+        run: |
+          docker run --rm -v "$PWD:/src:ro" "${{ matrix.image }}" sh -c '
+            cd /src && sh install.sh --from /src/bundle --yes --no-tailscale --no-hermes --no-service &&
+            ~/.local/bin/switchboard-hub version && ~/.local/bin/switchboard-hub setup-code >/dev/null && echo installed'
+
+  docker:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with: { distribution: temurin, java-version: "21" }
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - name: Build the image from a bundle, as release.yml does
+        run: |
+          (cd hub && ./gradlew installDist --no-daemon -q)
+          d=switchboard-hub-linux-x64; mkdir -p "$RUNNER_TEMP/$d"
+          cp -R hub/build/install/switchboard-hub "$RUNNER_TEMP/$d/app"
+          jlink --add-modules "$MODULES" --strip-debug --no-man-pages --no-header-files --compress zip-6 --output "$RUNNER_TEMP/$d/runtime"
+          tar -C "$RUNNER_TEMP" -czf "hub/docker/$d.tar.gz" "$d"
+          docker build --build-arg BUNDLE="$d.tar.gz" -t switchboard-hub:test hub/docker
+      - name: The container answers
+        run: |
+          docker run -d --name hub -p 8780:8780 -e PUBLIC_URL=https://hub.example.ts.net -e HUB_NAME="Main Street" switchboard-hub:test
+          for i in $(seq 1 60); do curl -fsS http://127.0.0.1:8780/v1/hub && break; sleep 1; done
+          curl -fsS http://127.0.0.1:8780/v1/hub | grep -q '"name":"Main Street"'
+          docker exec hub /opt/switchboard-hub/app/bin/switchboard-hub setup-code | grep -q 'hub.example.ts.net'

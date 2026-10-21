@@ -22,6 +22,7 @@ class AppContainer(
     override val deviceName: String,
     engine: HttpClientEngine? = null,
     pushTokens: PushTokens? = null,
+    override val scanQr: (suspend () -> String?)? = null,
 ) : AppDependencies {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val client = HubClient(engine, TokenStore(store))

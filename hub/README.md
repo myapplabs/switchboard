@@ -84,10 +84,25 @@ curl -X POST http://127.0.0.1:8780/v1/agents -H "Authorization: Bearer $TOKEN" -
 
 `switchboard-hub test-agent <url>` checks an agent's connection from the hub machine.
 
-## Install as a service on Linux (no root needed)
+## Install
 
-New to this? The step-by-step [setup guide](../docs/setup-guide.md) covers everything, including Tailscale
-and Hermes.
+**The one-step installer** (Linux x86-64 / ARM, macOS on Apple silicon): a signed release with its own
+trimmed Java runtime, Tailscale and Hermes set up after asking, a systemd user service or launchd agent,
+and the pairing QR code at the end. See [`../install.sh`](../install.sh) and the
+[setup guide](../docs/setup-guide.md).
+
+```sh
+curl -fsSL https://switchboard.applabs.llc/install.sh | sh
+```
+
+**Docker** (`ghcr.io/myapplabs/switchboard-hub`, amd64 and arm64; data in `/data`; `PUBLIC_URL` and
+`HUB_NAME` set the first config): see [`docker/`](docker) and the setup guide.
+
+**Releases** are built by `.github/workflows/release.yml` on a version tag: each platform is smoke-tested,
+`SHA256SUMS` is signed (`ssh-keygen -Y sign`, namespace `switchboard-release`; the public key is in
+`install.sh`), and the Docker image is built from the same Linux builds.
+
+## Install from source (no root needed)
 
 On the computer that will run the hub (needs Java 21: `sudo apt install openjdk-21-jdk`):
 

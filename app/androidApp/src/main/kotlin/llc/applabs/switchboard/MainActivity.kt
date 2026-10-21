@@ -18,6 +18,8 @@ import llc.applabs.switchboard.ui.App
 class MainActivity : ComponentActivity() {
     /** An invite link the app was opened with (or re-opened with: launchMode singleTask). */
     private val inviteLink = mutableStateOf<String?>(null)
+    /** The owner's pairing link (the hub machine's QR code, opened with the phone's camera). */
+    private val pairLink = mutableStateOf<String?>(null)
     /** A conversation a notification asked to open. */
     private val openSession = mutableStateOf<String?>(null)
     /** A card a notification asked to open. */
@@ -31,7 +33,7 @@ class MainActivity : ComponentActivity() {
         val container = (application as SwitchboardApp).container
         setContent {
             App(deps = container, inviteLink = inviteLink.value, openSession = openSession.value, onSessionOpened = { openSession.value = null },
-                openTask = openTask.value, onTaskOpened = { openTask.value = null })
+                openTask = openTask.value, onTaskOpened = { openTask.value = null }, pairLink = pairLink.value)
         }
         // Ask for notifications once someone is signed in (Android 13+).
         lifecycleScope.launch {
@@ -51,6 +53,7 @@ class MainActivity : ComponentActivity() {
     private fun handle(intent: Intent?) {
         intent ?: return
         intent.dataString?.takeIf { intent.action == Intent.ACTION_VIEW && it.contains("/join") }?.let { inviteLink.value = it }
+        intent.dataString?.takeIf { intent.action == Intent.ACTION_VIEW && it.contains("/pair") }?.let { pairLink.value = it }
         intent.getStringExtra(Notifications.EXTRA_SESSION)?.let { openSession.value = it }
         intent.getStringExtra(Notifications.EXTRA_TASK)?.let { openTask.value = it }
     }

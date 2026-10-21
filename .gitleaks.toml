@@ -3,6 +3,7 @@
 useDefault = true
 
 [allowlist]
-description = "Migration file names, test code (fake keys only), and google-services.json (Firebase app config, public by design)"
-regexes = ['''V\d{3}__[a-z_]+\.sql''']
+description = "Migration file names, test code (fake keys only), google-services.json (Firebase app config, public by design), and Android signing-certificate fingerprints (android:apk-key-hash:…, public; also in assetlinks.json)"
+regexTarget = "line"
+regexes = ['''V\d{3}__[a-z_]+\.sql''', '''android:apk-key-hash:[A-Za-z0-9_-]{43}''']
 paths = ['''(hub|app/shared/[a-z]+)/src/test/''', '''app/shared/[a-z]+/src/commonTest/''', '''push-relay/test/''', '''app/androidApp/google-services\.json''']

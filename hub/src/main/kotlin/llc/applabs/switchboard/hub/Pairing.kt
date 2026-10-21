@@ -62,8 +62,12 @@ class Pairing(private val db: Db, private val accounts: Accounts) {
         private fun invalid(detail: String, status: HttpStatusCode = HttpStatusCode.BadRequest) =
             HubException(status, "setup_code_invalid", "Setup code not accepted", detail)
 
-        /** What the pairing QR code carries: the hub's address and the code. */
-        fun pairingUrl(config: HubConfig, code: String) = "${config.hubUrl}/pair?code=$code"
+        /**
+         * What the pairing QR code carries: a link on the app's own domain with the hub's address and the code
+         * after `#` (a browser never sends that part anywhere). A phone's camera opens it in the app, filled in.
+         */
+        fun pairingUrl(config: HubConfig, code: String) =
+            "https://${config.rpId}/pair#hub=${java.net.URLEncoder.encode(config.hubUrl, Charsets.UTF_8)}&code=$code"
 
         /** [text] as a QR code for a terminal (light modules drawn, for dark terminals; 2 rows per line). */
         fun terminalQr(text: String): String {
@@ -93,7 +97,7 @@ class Pairing(private val db: Db, private val accounts: Accounts) {
         fun banner(config: HubConfig, code: String, ownerExists: Boolean): String = buildString {
             val url = pairingUrl(config, code)
             appendLine()
-            appendLine(if (ownerExists) "Add a device for the owner — scan with the app:" else "Pair the owner's phone — scan with the app:")
+            appendLine(if (ownerExists) "Add a phone for the owner: scan this with the phone's camera." else "Pair the owner's phone: scan this with the phone's camera.")
             append(terminalQr(url))
             appendLine("Or enter in the app:  hub ${config.hubUrl}   code $code")
             appendLine("Single use, valid for $TTL_HOURS h. A new code: switchboard-hub setup-code")
