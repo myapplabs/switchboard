@@ -27,16 +27,16 @@ import kotlinx.serialization.json.jsonPrimitive
 class ApiTest {
     private val hermes = FakeHermes()
     private val scope = CoroutineScope(SupervisorJob())
-    private val hub = Hub(HubConfig(hubName = "The Francos"), Db.inMemory(), SecretBox.random(),
+    private val hub = Hub(HubConfig(hubName = "Main Street Bakery"), Db.inMemory(), SecretBox.random(),
         mapOf("hermes" to hermes.adapter), scope, healthIntervalMs = 60_000)
 
     private fun ownerToken(): String {
-        val hh = hub.accounts.ensureHub("The Francos")
+        val hh = hub.accounts.ensureHub("Main Street Bakery")
         return hub.accounts.issue(hub.accounts.owner(hh) ?: hub.accounts.createUser(hh, "Paul", Role.owner), "access", 900)
     }
 
     private fun tokenFor(role: Role): String {
-        val hh = hub.accounts.ensureHub("The Francos")
+        val hh = hub.accounts.ensureHub("Main Street Bakery")
         return hub.accounts.issue(hub.accounts.createUser(hh, role.name, role), "access", 900)
     }
 
@@ -53,7 +53,7 @@ class ApiTest {
 
     @Test fun `hub info says whether the owner still has to pair`() = app {
         val before = client.get("/v1/hub").json()
-        assertEquals("The Francos", before["name"]!!.jsonPrimitive.content)
+        assertEquals("Main Street Bakery", before["name"]!!.jsonPrimitive.content)
         assertEquals("true", before["setup_required"]!!.jsonPrimitive.content)
         ownerToken()
         assertEquals("false", client.get("/v1/hub").json()["setup_required"]!!.jsonPrimitive.content)

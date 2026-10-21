@@ -31,8 +31,8 @@ data class HubConfig(
      * `android:apk-key-hash:<…>` and `https://<rp id>` for iOS.
      */
     val origins: List<String> = emptyList(),
-    /** The AppLabs push relay (push-relay/), e.g. https://switchboard-push-relay.vercel.app; null = no push. */
-    val pushRelayUrl: String? = null,
+    /** The push relay (push-relay/): AppLabs' official one by default; null = no push notifications. */
+    val pushRelayUrl: String? = OFFICIAL_PUSH_RELAY,
 ) {
     /** The address phones use (also what the pairing QR code carries). */
     val hubUrl: String get() = (publicUrl ?: "http://$host:$port").trimEnd('/')
@@ -67,7 +67,14 @@ const val SWITCHBOARD_RP_ID = "switchboard.applabs.llc"
  * The official app's Android origins (`android:apk-key-hash:<base64url SHA-256 of the signing cert>`),
  * filled in once the app's release and debug signing keys exist. iOS needs none (it reports `https://<rp id>`).
  */
-val SWITCHBOARD_APP_ORIGINS: List<String> = emptyList()
+val SWITCHBOARD_APP_ORIGINS: List<String> = listOf(
+    // The builds handed out during private testing (development signing key). The Play app-signing key is
+    // added here, and to passkey-domain's assetlinks.json, when the Play release exists.
+    "android:apk-key-hash:LSIYZm4GpwDVFN9eUXFOhbPKSNFDTIGpnVapeikD0mM",
+)
+
+/** AppLabs' push relay for the official app (push-relay/); a hub's config can name another or none. */
+const val OFFICIAL_PUSH_RELAY = "https://switchboard-push-relay.vercel.app"
 
 const val HUB_VERSION = "0.1.0"
 const val API_VERSION = "1.0"

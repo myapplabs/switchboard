@@ -18,6 +18,9 @@ import kotlinx.coroutines.SupervisorJob
  *   switchboard-hub test-agent URL [--type hermes]
  *                                     check an agent's connection as the app's "Add agent" does; the
  *                                     API key is read from stdin (never an argument)
+ *   switchboard-hub add-agent --name NAME --url URL [--type hermes] [--profile main]
+ *                                     on the hub machine (the installer uses it): test and add an agent before
+ *                                     anyone has paired; the API key is read from stdin; restart the hub after
  *   switchboard-hub version
  */
 fun main(args: Array<String>) {
@@ -27,8 +30,9 @@ fun main(args: Array<String>) {
         "dev-token" -> devToken(dataDir, args.drop(1))
         "setup-code" -> setupCode(dataDir)
         "test-agent" -> testAgent(args.drop(1))
+        "add-agent" -> addAgent(dataDir, args.drop(1))
         "version" -> println("switchboard-hub $HUB_VERSION (API $API_VERSION)")
-        else -> { System.err.println("usage: switchboard-hub [serve | setup-code | test-agent URL | dev-token [--name NAME] | version]"); exitProcess(2) }
+        else -> { System.err.println("usage: switchboard-hub [serve | setup-code | test-agent URL | add-agent --name NAME --url URL | dev-token [--name NAME] | version]"); exitProcess(2) }
     }
 }
 
@@ -69,6 +73,29 @@ private fun setupCode(dataDir: java.nio.file.Path) {
         val hubId = accounts.ensureHub(config.hubName)
         val code = Pairing(db, accounts).newCode(hubId)
         println(Pairing.banner(config, code, ownerExists = accounts.hasOwner()))
+    }
+}
+
+private fun addAgent(dataDir: java.nio.file.Path, args: List<String>) {
+    fun opt(name: String) = args.indexOf(name).takeIf { it >= 0 }?.let { args.getOrNull(it + 1) }
+    val name = opt("--name") ?: run { System.err.println("usage: switchboard-hub add-agent --name NAME --url URL [--type hermes] [--profile main] < key"); exitProcess(2) }
+    val url = opt("--url") ?: run { System.err.println("--url is required"); exitProcess(2) }
+    val key = readlnOrNull()?.trim().orEmpty()
+    if (key.isEmpty()) { System.err.println("The API key is read from stdin."); exitProcess(2) }
+    val config = HubConfig.load(dataDir)
+    Db.open(dataDir.resolve("hub.db")).use { db ->
+        val accounts = Accounts(db)
+        val agents = Agents(db, SecretBox.fromDataDir(dataDir), accounts, UserEvents(), Hub.defaultAdapters())
+        val hubId = accounts.ensureHub(config.hubName)
+        if (agents.records(hubId).any { it.name.equals(name.trim(), ignoreCase = true) }) { println("An agent named $name is already on this hub."); return }
+        try {
+            kotlinx.coroutines.runBlocking { agents.addForHub(hubId, AgentInput(opt("--type") ?: "hermes", name, url, listOf(ProfileInput(opt("--profile") ?: "main", null, key)))) }
+            println("Added $name. Restart the hub to start using it: systemctl --user restart switchboard-hub")
+        } catch (e: HubException) {
+            System.err.println("Couldn't add $name: ${e.detail ?: e.title}")
+            e.test?.checks?.forEach { System.err.println("  ${if (it.ok) "ok  " else "FAIL"} ${it.name}${it.detail?.let { d -> " — $d" } ?: ""}") }
+            exitProcess(1)
+        }
     }
 }
 

@@ -25,14 +25,14 @@ import kotlinx.serialization.json.put
 
 class PairingTest {
     private val androidApp = "android:apk-key-hash:x1Yw0Tb8sYl6m0Hk2Q4xqJ3PZ0yV3tE6nR8aWcF2bLk"
-    private val config = HubConfig(hubName = "The Francos", publicUrl = "https://mini-1.tail1234.ts.net",
+    private val config = HubConfig(hubName = "Main Street Bakery", publicUrl = "https://mini-1.tail1234.ts.net",
         origins = listOf(androidApp))
     private val hub = Hub(config, Db.inMemory(), SecretBox.random(), mapOf("hermes" to FakeHermes().adapter),
         CoroutineScope(SupervisorJob()), healthIntervalMs = 60_000)
     /** The Android app: passkeys for the shared domain, origin = the app's signing key. */
     private val phone = SoftAuthenticator(SWITCHBOARD_RP_ID, androidApp)
     private fun anotherPhone() = SoftAuthenticator(SWITCHBOARD_RP_ID, androidApp)
-    private fun code() = hub.pairing.newCode(hub.accounts.ensureHub("The Francos"))
+    private fun code() = hub.pairing.newCode(hub.accounts.ensureHub("Main Street Bakery"))
 
     private fun app(block: suspend ApplicationTestBuilder.() -> Unit) = testApplication {
         application { hubModule(hub) }
@@ -173,10 +173,32 @@ class PairingTest {
         assertEquals("validation_failed", post("/v1/auth/passkeys/register/options", """{"display_name":"Kid"}""").json().str("code"))
     }
 
-    @Test fun `the pairing QR code carries the hub address and code`() {
+    @Test fun `the pairing QR code is a link the phone's camera opens in the app, with the hub and code after the hash`() {
         val url = Pairing.pairingUrl(config, "ABCD-EFGH")
-        assertEquals("https://mini-1.tail1234.ts.net/pair?code=ABCD-EFGH", url)
+        assertEquals("https://switchboard.applabs.llc/pair#hub=https%3A%2F%2Fmini-1.tail1234.ts.net&code=ABCD-EFGH", url)
         val qr = Pairing.terminalQr(url)
         assertTrue(qr.lines().size > 10 && qr.contains('█'))
+    }
+
+    @Test fun `the installer adds an agent before anyone has paired, tested and with its key encrypted`() {
+        val db = Db.inMemory()
+        val secrets = SecretBox.random()
+        val accounts = Accounts(db)
+        val agents = Agents(db, secrets, accounts, UserEvents(), mapOf("hermes" to FakeHermes().adapter))
+        val hubId = accounts.ensureHub("Main Street Bakery")
+        assertTrue(!accounts.hasOwner())
+        val id = kotlinx.coroutines.runBlocking { agents.addForHub(hubId, AgentInput("hermes", "office", "http://127.0.0.1:8642", listOf(ProfileInput("main", null, FakeHermes.KEY)))) }
+        val r = agents.record(id)!!
+        assertEquals("office" to "online", r.name to r.status)
+        assertEquals(FakeHermes.KEY, secrets.open(r.profiles.single().apiKeySealed))
+        assertTrue(db.query("SELECT api_key_encrypted FROM agent_profile") { it.getString(1) }.none { FakeHermes.KEY in it }, "stored encrypted")
+        val wrong = runCatching { kotlinx.coroutines.runBlocking { agents.addForHub(hubId, AgentInput("hermes", "bad", "http://127.0.0.1:8642", listOf(ProfileInput("main", null, "wrong-key-0123456789")))) } }
+        assertTrue(wrong.exceptionOrNull() is HubException, "a key the agent rejects isn't saved")
+    }
+
+    @Test fun `a fresh hub works with the official app and its push relay out of the box`() {
+        val fresh = HubConfig()
+        assertTrue(fresh.effectiveOrigins.any { it.startsWith("android:apk-key-hash:") }, "the official app's passkeys are accepted without config")
+        assertEquals(OFFICIAL_PUSH_RELAY, fresh.pushRelayUrl)
     }
 }
