@@ -20,6 +20,19 @@
             "value": "application/json"
           }
         ]
+      },
+      {
+        "source": "/install.sh",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "text/plain; charset=utf-8"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "max-age=300"
+          }
+        ]
       }
     ],
     "target": "switchboard",
@@ -32,6 +45,9 @@
         "source": "/pair",
         "destination": "/pair.html"
       }
+    ],
+    "predeploy": [
+      "cp \"$PROJECT_DIR/../install.sh\" \"$PROJECT_DIR/public/install.sh\""
     ]
   }
 }

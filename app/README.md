@@ -21,7 +21,8 @@ Requires JDK 21 and the Android SDK (`local.properties`).
 adb install -r androidApp/build/outputs/apk/debug/androidApp-debug.apk
 ```
 
-In the app, enter your hub's address (or open an invite link) and sign in with a passkey.
+In the app, scan the hub's pairing QR code or an invite (Google's code scanner: no camera permission), or
+enter the hub's address, and sign in with a passkey.
 
 **Debug builds** also accept a hub on plain HTTP and offer **Use a test token** (from
 `switchboard-hub dev-token`), for working on the app before passkeys are set up. Release builds need the
@@ -41,7 +42,6 @@ Dependencies are locked (`gradle.lockfile` per module); after changing one, run
 
 - **iOS:** the code is written (`iosApp/`, `Platform.swift`) but must be built on a Mac with an Apple
   developer account.
-- Scanning invite QR codes with the camera (opening or pasting an invite link works).
 - Bundled Inter and JetBrains Mono fonts (the platform's sans and mono are used).
 
 Conventions for contributors are in [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md).

@@ -22,7 +22,8 @@ When the Android app's signing key exists, also put its origin
 The same domain is Switchboard's landing page: `public/index.html` with `style.css` and `favicon.svg` (the
 mark from `app/design/`), `join.html` for invite links opened without the app (served at `/join` by a
 rewrite; the code stays in the link's `#…` part, which browsers never send), and `404.html`. No external
-fonts, scripts, cookies or trackers. Don't add an `ignore` list to `firebase.json`: Firebase's usual one
+fonts, scripts, cookies or trackers. `/install.sh` is the repository's `install.sh`, copied in when the site
+is deployed (`predeploy` in `firebase.json`). Don't add an `ignore` list to `firebase.json`: Firebase's usual one
 skips dot-folders, which would drop `.well-known/` and break passkeys.
 
 ## Hosting (Firebase project "Switchboard", `applabs-switchboard`)
