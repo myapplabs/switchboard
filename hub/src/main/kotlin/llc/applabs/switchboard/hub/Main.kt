@@ -13,8 +13,10 @@ import kotlinx.coroutines.SupervisorJob
  *   switchboard-hub [serve]                 run the hub (data: $SWITCHBOARD_HUB_DATA or ~/.switchboard-hub)
  *   switchboard-hub setup-code              on the hub machine: a new pairing code + QR code for the owner's
  *                                     phone (first pairing, or another device / a lost phone)
- *   switchboard-hub dev-token [--name NAME] on the hub machine: create the owner if there is none and print
- *                                     an admin token (30 days) for testing without the app
+ *   switchboard-hub dev-token [--name NAME] [--hours N]
+ *                                     on the hub machine: create the owner if there is none and print an
+ *                                     owner token for testing without the app (1 hour by default, at most 24;
+ *                                     printed once, never saved)
  *   switchboard-hub test-agent URL [--type hermes]
  *                                     check an agent's connection as the app's "Add agent" does; the
  *                                     API key is read from stdin (never an argument)
@@ -38,6 +40,7 @@ fun main(args: Array<String>) {
 
 private fun serve(dataDir: java.nio.file.Path) {
     val config = HubConfig.load(dataDir)
+    restrictDataDir(dataDir)
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     val hub = Hub(config, Db.open(dataDir.resolve("hub.db")), SecretBox.fromDataDir(dataDir), Hub.defaultAdapters(), scope)
     hub.poller.start()
@@ -54,14 +57,15 @@ private fun serve(dataDir: java.nio.file.Path) {
 
 private fun devToken(dataDir: java.nio.file.Path, args: List<String>) {
     val name = args.indexOf("--name").takeIf { it >= 0 }?.let { args.getOrNull(it + 1) } ?: "Owner"
+    val hours = (args.indexOf("--hours").takeIf { it >= 0 }?.let { args.getOrNull(it + 1)?.toLongOrNull() } ?: 1L).coerceIn(1L, 24L)
     val config = HubConfig.load(dataDir)
     Db.open(dataDir.resolve("hub.db")).use { db ->
         val accounts = Accounts(db)
         val hubId = accounts.ensureHub(config.hubName)
         val owner = accounts.owner(hubId) ?: accounts.createUser(hubId, name, Role.owner)
-        val token = accounts.issue(owner, "admin", ttlSeconds = 30L * 24 * 3600, deviceName = "dev-token")
+        val token = accounts.issue(owner, "admin", ttlSeconds = hours * 3600, deviceName = "dev-token")
         println("Owner: ${owner.displayName} (${owner.userId})")
-        println("Token (30 days, shown once — treat like a password):")
+        println("Owner token, valid $hours hour${if (hours == 1L) "" else "s"}. Shown once and never saved; treat it like a password:")
         println(token)
     }
 }

@@ -33,6 +33,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
@@ -158,6 +160,21 @@ fun AgentAccessScreen(viewModel: AgentAccessViewModel, onBack: () -> Unit) {
             }
             item { Text("You always have access, on the first profile. Others: deny unless granted here.", style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            item {
+                Card(colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                    modifier = Modifier.semantics(mergeDescendants = true) {}) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Before you share an agent", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.semantics { heading() })
+                        Text("People you allow here can ask the agent to use its tools: for example run commands or read files on the computer it " +
+                            "runs on. Switchboard controls who may use which agent and profile, not what the agent itself can reach. Share a powerful " +
+                            "profile only with people you'd trust with that computer, or give them a sandboxed profile that only sees what they need.",
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                        Text("How: github.com/myapplabs/switchboard/blob/main/SECURITY.md", style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer)
+                    }
+                }
+            }
             items(s.rows, key = { it.role }) { row ->
                 Card {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -169,6 +186,8 @@ fun AgentAccessScreen(viewModel: AgentAccessViewModel, onBack: () -> Unit) {
                             Switch(row.canChat, { viewModel.edit(row.copy(canChat = it)) })
                         }
                         if (row.canChat) {
+                            Text("They can use this agent's tools through the profile below.", style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error)
                             SectionLabel("Profile (tool level)")
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 val profiles = agent?.profiles.orEmpty()

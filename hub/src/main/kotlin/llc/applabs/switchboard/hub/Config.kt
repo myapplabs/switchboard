@@ -56,6 +56,23 @@ data class HubConfig(
     }
 }
 
+/**
+ * Makes the data folder readable only by the hub's account (folder 700, files 600). Run at startup, so older
+ * installs are tightened too; new files are private through the service's umask. No-op where POSIX
+ * permissions don't exist.
+ */
+fun restrictDataDir(dataDir: Path) {
+    if (!Files.isDirectory(dataDir)) return
+    runCatching {
+        Files.setPosixFilePermissions(dataDir, java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"))
+        Files.list(dataDir).use { files ->
+            files.filter { Files.isRegularFile(it) }.forEach {
+                Files.setPosixFilePermissions(it, java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"))
+            }
+        }
+    }
+}
+
 /** Where the hub keeps its database, master key and config: `SWITCHBOARD_HUB_DATA`, else `~/.switchboard-hub`. */
 fun defaultDataDir(): Path =
     System.getenv("SWITCHBOARD_HUB_DATA")?.let { Path.of(it) } ?: Path.of(System.getProperty("user.home"), ".switchboard-hub")

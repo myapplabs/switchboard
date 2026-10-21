@@ -43,6 +43,7 @@ ssh $SSH_OPTS "$HOST" bash -s -- "$PUBLIC_URL" <<'REMOTE'
 set -euo pipefail
 cat > ~/.local/bin/switchboard-hub <<'WRAP'
 #!/bin/sh
+umask 077
 export JAVA_HOME="$HOME/.local/share/switchboard-hub/jre"
 export SWITCHBOARD_HUB_DATA="${SWITCHBOARD_HUB_DATA:-$HOME/.switchboard-hub}"
 exec "$HOME/.local/share/switchboard-hub/app/bin/switchboard-hub" "$@"

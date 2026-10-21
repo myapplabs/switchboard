@@ -87,8 +87,12 @@ curl -X POST http://127.0.0.1:8780/v1/agents -H "Authorization: Bearer $TOKEN" -
 ## Install
 
 **The one-step installer** (Linux x86-64 / ARM, macOS on Apple silicon): a signed release with its own
-trimmed Java runtime, Tailscale and Hermes set up after asking, a systemd user service or launchd agent,
-and the pairing QR code at the end. See [`../install.sh`](../install.sh) and the
+trimmed Java runtime, Tailscale and Hermes set up after asking, and the pairing QR code at the end. On
+Linux the hub gets its own `switchboard` account: programs in `/opt/switchboard-hub` (owned by root), data
+in `/var/lib/switchboard-hub` (mode 700, files 600), a hardened system service (no home folders, the rest of
+the system read-only, no new privileges), and `sudo switchboard-hub …` for its commands. An older install in
+a user's home folder is moved there. `--user-mode` keeps the hub in your account (macOS does this for now).
+See [`../SECURITY.md`](../SECURITY.md). See [`../install.sh`](../install.sh) and the
 [setup guide](../docs/setup-guide.md).
 
 ```sh
