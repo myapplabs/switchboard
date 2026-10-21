@@ -5,7 +5,8 @@
 # - the hub in ~/.local/share/switchboard-hub/app (replaced on each deploy; data is untouched)
 # - `switchboard-hub` command in ~/.local/bin (sets JAVA_HOME), e.g. `switchboard-hub setup-code`
 # - systemd user service, enabled and (re)started; needs lingering for start at boot
-# - first install only: ~/.switchboard-hub/config.json listening on all addresses, with public-url
+# - first install only: ~/.switchboard-hub/config.json with public-url; it listens only on this machine when
+#   public-url is HTTPS (Tailscale Serve in front), otherwise on all addresses
 #   (what phones use, e.g. https://mini-1.your-tailnet.ts.net, or http://192.168.1.20:8780 on a home network)
 set -euo pipefail
 HOST=${1:?usage: deploy.sh <ssh-host> [public-url]}
@@ -50,11 +51,14 @@ data=~/.switchboard-hub
 if [ ! -f "$data/config.json" ]; then
   mkdir -p "$data" && chmod 700 "$data"
   url=${1:+\"$1\"}
+  # Behind HTTPS (Tailscale Serve) the hub only needs to listen on this machine; a plain-HTTP address
+  # means phones connect directly on the home network.
+  case "$1" in https://*) listen=127.0.0.1 ;; *) listen=0.0.0.0 ;; esac
   cat > "$data/config.json" <<CONF
 {
-    "host": "0.0.0.0",
+    "host": "$listen",
     "port": 8780,
-    "householdName": "Home",
+    "hubName": "Home",
     "publicUrl": ${url:-null},
     "healthIntervalSeconds": 15
 }
