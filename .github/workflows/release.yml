@@ -1,0 +1,143 @@
+# Releases: on a version tag (v0.1.0 …), build the hub for each platform with its own trimmed Java runtime,
+# smoke-test each build, publish them with signed checksums (the installer verifies both), and publish the
+# Docker image built from the same Linux builds. workflow_dispatch builds and tests without publishing.
+# Actions are pinned to release commits, as in ci.yml; everything else uses the gh and docker CLIs.
+name: Release
+on:
+  push: { tags: ["v*"] }
+  workflow_dispatch:
+permissions: { contents: read }
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+env:
+  # The hub's Java modules (jdeps), plus jdk.crypto.ec for HTTPS to agents and the push relay.
+  MODULES: java.base,java.desktop,java.instrument,java.management,java.naming,java.security.jgss,java.sql,jdk.jfr,jdk.net,jdk.unsupported,jdk.crypto.ec
+jobs:
+  draft:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - name: The tag matches the hub's version
+        run: |
+          want="${GITHUB_REF_NAME#v}"
+          have=$(grep -oE 'HUB_VERSION = "[^"]+"' -r hub/src/main/kotlin | head -1 | cut -d'"' -f2)
+          [ "$want" = "$have" ] || { echo "tag $GITHUB_REF_NAME but HUB_VERSION is $have"; exit 1; }
+      - name: Draft release
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: gh release create "$GITHUB_REF_NAME" --draft --title "Switchboard hub $GITHUB_REF_NAME" --generate-notes
+
+  build:
+    needs: [draft]
+    if: always() && (needs.draft.result == 'success' || needs.draft.result == 'skipped')
+    permissions: { contents: write }
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: ubuntu-24.04, target: linux-x64 }
+          - { runner: ubuntu-24.04-arm, target: linux-arm64 }
+          - { runner: macos-15, target: macos-arm64 }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with: { distribution: temurin, java-version: "21" }
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - name: Build
+        working-directory: hub
+        run: ./gradlew installDist --no-daemon
+      - name: Bundle with a trimmed Java runtime
+        run: |
+          name="switchboard-hub-${{ matrix.target }}"
+          mkdir -p "dist/$name"
+          cp -R hub/build/install/switchboard-hub "dist/$name/app"
+          jlink --add-modules "$MODULES" --strip-debug --no-man-pages --no-header-files --compress zip-6 --output "dist/$name/runtime"
+          cp hub/LICENSE "dist/$name/LICENSE"
+          tar -C dist -czf "dist/$name.tar.gz" "$name"
+          ls -l dist
+      - name: Smoke test (version, then serve and answer)
+        run: |
+          d="dist/switchboard-hub-${{ matrix.target }}"
+          export JAVA_HOME="$PWD/$d/runtime" SWITCHBOARD_HUB_DATA="$RUNNER_TEMP/hubdata"
+          mkdir -p "$SWITCHBOARD_HUB_DATA" && printf '{"host":"127.0.0.1","port":8799}' > "$SWITCHBOARD_HUB_DATA/config.json"
+          "$d/app/bin/switchboard-hub" version
+          "$d/app/bin/switchboard-hub" serve > "$RUNNER_TEMP/serve.log" 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8799/v1/hub && break; sleep 1; done
+          curl -sf http://127.0.0.1:8799/v1/hub | grep -q '"setup_required":true'
+          kill %1 || true
+      - name: Upload to the draft release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: gh release upload "$GITHUB_REF_NAME" "dist/switchboard-hub-${{ matrix.target }}.tar.gz" --clobber
+
+  publish:
+    needs: [build]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - name: Checksums, signed
+        env:
+          GH_TOKEN: "${{ github.token }}"
+          SIGNING_KEY: "${{ secrets.SWITCHBOARD_RELEASE_SIGNING_KEY }}"
+        run: |
+          mkdir out && cd out
+          gh release download "$GITHUB_REF_NAME" --pattern 'switchboard-hub-*.tar.gz'
+          cp ../install.sh .
+          sha256sum switchboard-hub-*.tar.gz install.sh > SHA256SUMS
+          umask 077 && printf '%s\n' "$SIGNING_KEY" > "$RUNNER_TEMP/key"
+          ssh-keygen -Y sign -q -f "$RUNNER_TEMP/key" -n switchboard-release SHA256SUMS
+          rm -f "$RUNNER_TEMP/key"
+          cat SHA256SUMS
+      - name: Check the signature as the installer will
+        working-directory: out
+        run: |
+          key=$(grep -oE 'ssh-ed25519 [A-Za-z0-9+/=]+' ../install.sh | head -1)
+          printf 'releases@applabs.llc namespaces="switchboard-release" %s\n' "$key" > allowed
+          ssh-keygen -Y verify -f allowed -I releases@applabs.llc -n switchboard-release -s SHA256SUMS.sig < SHA256SUMS
+      - name: Publish
+        working-directory: out
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          gh release upload "$GITHUB_REF_NAME" install.sh SHA256SUMS SHA256SUMS.sig --clobber
+          gh release edit "$GITHUB_REF_NAME" --draft=false --latest
+
+  docker:
+    needs: [publish]
+    if: startsWith(github.ref, 'refs/tags/v')
+    strategy:
+      matrix:
+        include:
+          - { runner: ubuntu-24.04, arch: amd64, target: linux-x64 }
+          - { runner: ubuntu-24.04-arm, arch: arm64, target: linux-arm64 }
+    runs-on: ${{ matrix.runner }}
+    permissions: { contents: read, packages: write }
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - name: Build from the published Linux build, push this architecture
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          gh release download "$GITHUB_REF_NAME" --pattern "switchboard-hub-${{ matrix.target }}.tar.gz" --dir hub/docker
+          echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/switchboard-hub"
+          docker build --build-arg BUNDLE="switchboard-hub-${{ matrix.target }}.tar.gz" -t "$image:${GITHUB_REF_NAME#v}-${{ matrix.arch }}" hub/docker
+          docker push "$image:${GITHUB_REF_NAME#v}-${{ matrix.arch }}"
+
+  docker-manifest:
+    needs: [docker]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions: { packages: write }
+    steps:
+      - name: One image for both architectures
+        run: |
+          echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/switchboard-hub"; v="${GITHUB_REF_NAME#v}"
+          for tag in "$v" latest; do
+            docker buildx imagetools create -t "$image:$tag" "$image:$v-amd64" "$image:$v-arm64"
+          done

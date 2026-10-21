@@ -1,0 +1,6 @@
+#!/bin/sh
+# A stand-in `hermes` command: "gateway restart" (re)starts fake-hermes.py, like Hermes restarting its API server.
+here=$(cd "$(dirname "$0")" && pwd)
+echo "$*" >> "$HOME/hermes-calls.log"
+pkill -f fake-hermes.py 2>/dev/null; sleep 0.5
+nohup python3 "$here/fake-hermes.py" "$HOME" >/dev/null 2>&1 &
