@@ -1,0 +1,8 @@
+id: 1
+event: run.started
+data: {"type":"run.started","run_id":"run_01JAC41XYZ","seq":1,"at":"2026-10-20T19:02:11.000Z","session_id":"ses_01JAC41","agent_id":"agt_mini_2","model_label":null,"message_id":"msg_01JAC41M"}
+
+id: 2
+event: run.failed
+data: {"type":"run.failed","run_id":"run_01JAC41XYZ","seq":2,"at":"2026-10-20T19:02:12.000Z","error":"mini-2 did not answer (connection refused).","code":"agent_offline"}
+

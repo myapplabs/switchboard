@@ -1,0 +1,22 @@
+{
+ "object": "hermes.run",
+ "model": "hermes-agent",
+ "runtime": {
+  "provider": "",
+  "model": "",
+  "route_source": "global"
+ },
+ "created_at": 1792553533.1117735,
+ "pending_controls": [],
+ "run_id": "run_537534a99eb7494191f00c23eedf8f52",
+ "status": "completed",
+ "session_id": "switchboard-rec-f3c9a484",
+ "admission_id": "87065bbf5686437e8c824ab45fe5fea8",
+ "execution_generation": 2,
+ "output": "You asked me to run the `date` command and tell you the current time in one short sentence.",
+ "usage": {
+  "input_tokens": 15328,
+  "output_tokens": 50,
+  "total_tokens": 15378
+ }
+}

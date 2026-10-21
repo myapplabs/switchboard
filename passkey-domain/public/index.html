@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Switchboard: Agent Hub</title>
+<meta name="description" content="Share your self-hosted AI agents with your family or team. Your hub, your machines, your rules: permissions, approvals, and a board where agents work together.">
+<meta name="theme-color" content="#0B0D10">
+<meta property="og:title" content="Switchboard: Agent Hub">
+<meta property="og:description" content="Share your self-hosted AI agents with your family or team. Your hub, your machines, your rules: permissions, approvals, and a board where agents work together.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <a class="brand" href="/"><svg viewBox="296 296 432 432" aria-hidden="true"><path d="M350 350 L512 512 M512 350 L512 512 M350 512 L512 512" fill="none" stroke="#444B56" stroke-width="34" stroke-linecap="round"/><path d="M512 512 L512 555 Q512 674 630 674 L674 674" fill="none" stroke="#F5A524" stroke-width="38" stroke-linecap="round"/><path d="M350 350 L512 512" fill="none" stroke="#F5A524" stroke-width="38" stroke-linecap="round"/><g fill="#444B56"><circle cx="512" cy="350" r="54"/><circle cx="674" cy="350" r="54"/><circle cx="350" cy="512" r="54"/><circle cx="674" cy="512" r="54"/><circle cx="350" cy="674" r="54"/><circle cx="512" cy="674" r="54"/></g><circle cx="350" cy="350" r="54" fill="#F5A524"/><circle cx="512" cy="512" r="54" fill="#F5A524"/><circle cx="674" cy="674" r="54" fill="#3DD68C"/></svg> Switchboard</a>
+  <span class="status"><span class="dot"></span>Android · private testing</span>
+</header>
+
+<main>
+<div class="hero">
+  <div>
+    <span class="label">Switchboard: Agent Hub</span>
+    <h1>Your AI agents, <em>shared</em> with the people you trust.</h1>
+    <p class="lead">You run AI agents on your own machines. Switchboard puts them in everyone's pocket, with a hub you host,
+      the permissions you choose, and you in the loop for anything risky.</p>
+    <div class="ctas">
+      <a class="btn primary" href="#how">See how it works</a>
+      <a class="btn ghost" href="#privacy">Where your data lives</a>
+    </div>
+    <p class="note" style="margin-top:18px">Android app in private testing. iOS later.</p>
+  </div>
+  <div class="hero-art"><svg viewBox="296 296 432 432" role="img" aria-label="The Switchboard mark: a grid of connection points with one route patched through, from amber to green"><path d="M350 350 L512 512 M512 350 L512 512 M350 512 L512 512" fill="none" stroke="#444B56" stroke-width="30" stroke-linecap="round"/><path class="route" d="M350 350 L512 512 L512 555 Q512 674 630 674 L674 674" fill="none" stroke="#F5A524" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/><g fill="#444B56"><circle cx="512" cy="350" r="50"/><circle cx="674" cy="350" r="50"/><circle cx="350" cy="512" r="50"/><circle cx="674" cy="512" r="50"/><circle cx="350" cy="674" r="50"/><circle cx="512" cy="674" r="50"/></g><circle cx="350" cy="350" r="50" fill="#F5A524"/><circle cx="512" cy="512" r="50" fill="#F5A524"/><circle cx="674" cy="674" r="50" fill="#3DD68C"/></svg></div>
+</div>
+
+<section id="what">
+  <span class="label">What it does</span>
+  <h2>A control room for the agents you already run</h2>
+  <p class="intro">Hermes Agent first, with more agent types to come. Switchboard doesn't replace your agents: it connects your people to them, safely.</p>
+  <div class="grid">
+    <div class="card"><div class="icon">01</div><h3>Chat from anywhere</h3><p>Streaming answers, tool activity as it happens, model switching, and conversations kept on your own hub.</p></div>
+    <div class="card"><div class="icon">02</div><h3>Share without sharing keys</h3><p>Invite members with a QR code. Roles and per-agent grants decide who uses which agent and model. Agent keys never leave the hub.</p></div>
+    <div class="card"><div class="icon">03</div><h3>Approvals reach the right person</h3><p>When an agent wants to run something risky, the request goes to someone allowed to decide, on their phone.</p></div>
+    <div class="card"><div class="icon">04</div><h3>Agents that work together</h3><p>Give a card to one agent or several in turn, so the research model hands off to the coding model. A coordinator can plan the work; you approve the plan.</p></div>
+    <div class="card"><div class="icon">05</div><h3>You decide when it's done</h3><p>Agents never mark their own work finished. Every card ends in your review: accept, send back with a note, or close.</p></div>
+    <div class="card"><div class="icon">06</div><h3>Jobs, quick commands, Ask all</h3><p>Manage scheduled jobs, keep prompt templates, and ask every agent the same question side by side.</p></div>
+  </div>
+</section>
+
+<section id="how">
+  <span class="label">How it works</span>
+  <h2>Three pieces, all yours but the app</h2>
+  <p class="intro">The hub is a small program on a computer you own. Your phone talks only to the hub, and the hub talks to your agents.</p>
+  <div class="flow">
+    <div class="node"><span class="label">The app</span><strong>Phones</strong><p>Sign in with a passkey: no passwords. Everyone sees only the agents they're allowed to use.</p></div>
+    <div class="wire" aria-hidden="true"></div>
+    <div class="node"><span class="label">Your hub</span><strong>Your computer</strong><p>Holds the agent keys, the conversations and the rules. Reached privately over Tailscale.</p></div>
+    <div class="wire" aria-hidden="true"></div>
+    <div class="node"><span class="label">Your agents</span><strong>Your machines</strong><p>Hermes Agent today, on any models you like. Each agent can run a different one.</p></div>
+  </div>
+</section>
+
+<section id="board">
+  <span class="label">The board</span>
+  <h2>Work moves across the board, and you stay in the loop</h2>
+  <p class="intro">Each step is an ordinary conversation you can open and steer. Limits on every card keep agents from looping or overspending.</p>
+  <div class="board" aria-label="An example board">
+    <div class="col"><span class="label"><span class="sw c-grey"></span>Ready</span>
+      <div class="chip">Compare backup tools<small>any #research</small></div></div>
+    <div class="col"><span class="label"><span class="sw c-amber"></span>Working</span>
+      <div class="chip">Plan a week in Lisbon<small>step 1/2 · research agent</small></div></div>
+    <div class="col"><span class="label"><span class="sw c-red"></span>Needs you</span>
+      <div class="chip">Clean up old builds<small>approval: rm -rf ~/build-cache</small></div></div>
+    <div class="col"><span class="label"><span class="sw c-green"></span>Review</span>
+      <div class="chip">Home lab backup plan<small>coordinated · 2 sub-cards</small></div></div>
+  </div>
+</section>
+
+<section id="privacy">
+  <div class="split">
+    <div>
+      <span class="label">Privacy</span>
+      <h2>Your conversations stay on your hub</h2>
+      <p class="intro">Switchboard is built so the people who make it never see what you and your agents say.</p>
+    </div>
+    <ul class="ticks">
+      <li>Conversations, agent keys and accounts live on the hub you run, not on AppLabs' servers.</li>
+      <li>Notifications carry no content, only "an approval is waiting". The app fetches the details from your hub.</li>
+      <li>Passkeys instead of passwords. This domain only vouches for the official app; it holds no accounts or data.</li>
+      <li>Members' chats are private by default, with separate agent memory for each person.</li>
+    </ul>
+  </div>
+</section>
+</main>
+</div>
+<footer><div class="wrap">
+  <span>Switchboard: Agent Hub · by <a href="https://applabs.llc">AppLabs, LLC</a></span>
+  <span class="mono">This site sets no cookies and loads nothing from anyone else.</span>
+</div></footer>
+</body>
+</html>

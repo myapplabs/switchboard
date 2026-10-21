@@ -1,0 +1,34 @@
+: open
+
+id: 0
+data: {"event": "tool.started", "run_id": "run_0465380688dd41359659e8790b0c56ac", "timestamp": 1792553530.5122893, "tool": "terminal", "preview": "date", "tool_call_id": "call-eefa84b8-f427-4a36-901e-75cc768bede7", "seq": 0}
+
+id: 1
+data: {"event": "tool.completed", "run_id": "run_0465380688dd41359659e8790b0c56ac", "timestamp": 1792553530.8177485, "tool": "terminal", "duration": 0, "error": false, "tool_call_id": "call-eefa84b8-f427-4a36-901e-75cc768bede7", "preview": "", "seq": 1}
+
+id: 2
+data: {"event": "message.delta", "run_id": "run_0465380688dd41359659e8790b0c56ac", "timestamp": 1792553532.128898, "delta": "\n\nIt", "seq": 2}
+
+id: 3
+data: {"event": "message.delta", "run_id": "run_0465380688dd41359659e8790b0c56ac", "timestamp": 1792553532.130768, "delta": "'s 8:", "seq": 3}
+
+id: 4
+data: {"event": "message.delta", "run_id": "run_0465380688dd41359659e8790b0c56ac", "timestamp": 1792553532.1325617, "delta": "32 PM PDT", "seq": 4}
+
+id: 5
+data: {"event": "message.delta", "run_id": "run_0465380688dd41359659e8790b0c56ac", "timestamp": 1792553532.1960304, "delta": " on Tuesday, October", "seq": 5}
+
+id: 6
+data: {"event": "message.delta", "run_id": "run_0465380688dd41359659e8790b0c56ac", "timestamp": 1792553532.1983068, "delta": " 20,", "seq": 6}
+
+id: 7
+data: {"event": "message.delta", "run_id": "run_0465380688dd41359659e8790b0c56ac", "timestamp": 1792553532.200432, "delta": " 202", "seq": 7}
+
+id: 8
+data: {"event": "message.delta", "run_id": "run_0465380688dd41359659e8790b0c56ac", "timestamp": 1792553532.2024388, "delta": "6.", "seq": 8}
+
+id: 9
+data: {"event": "run.completed", "run_id": "run_0465380688dd41359659e8790b0c56ac", "timestamp": 1792553533.0675209, "output": "It's 8:32 PM PDT on Tuesday, October 20, 2026.", "usage": {"input_tokens": 30489, "output_tokens": 101, "total_tokens": 30590}, "runtime": {"provider": "", "model": "", "route_source": "global"}, "completed": true, "partial": false, "interrupted": false, "seq": 9}
+
+: stream closed
+

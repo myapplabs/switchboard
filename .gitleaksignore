@@ -1,0 +1,9 @@
+# Test fixtures (fake keys written for the tests), not secrets.
+278b7530e938244ca6e705762afb916d953dc984:src/test/kotlin/llc/applabs/switchboard/hub/PairingTest.kt:generic-api-key:27
+b6e328edd6a88b6b839acfc44e0e70fab9f9884a:src/test/kotlin/llc/applabs/hub/ApiTest.kt:generic-api-key:136
+b6e328edd6a88b6b839acfc44e0e70fab9f9884a:src/test/kotlin/llc/applabs/hub/ApiTest.kt:generic-api-key:138
+# Migration file names in Db.kt and a dummy key in the permission-matrix test (not secrets).
+b78834e787439275a26794557570e756803de09c:hub/src/main/kotlin/llc/applabs/switchboard/hub/Db.kt:generic-api-key:56
+80088a25fadba985a6e7e998f297e46f4174a201:hub/src/main/kotlin/llc/applabs/switchboard/hub/Db.kt:generic-api-key:56
+80088a25fadba985a6e7e998f297e46f4174a201:hub/src/test/kotlin/llc/applabs/switchboard/hub/HouseholdTest.kt:generic-api-key:279
+504d67d0f1871bcc42105546325bce0522810079:hub/src/main/kotlin/llc/applabs/switchboard/hub/Db.kt:generic-api-key:56

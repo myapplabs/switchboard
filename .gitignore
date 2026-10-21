@@ -1,0 +1,7 @@
+# local notes
+*.before-*.md
+.venv/
+__pycache__/
+
+# Vercel project link (per machine)
+.vercel/

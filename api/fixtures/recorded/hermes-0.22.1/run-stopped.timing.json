@@ -1,0 +1,966 @@
+[
+ {
+  "t": 0.072,
+  "line": ": open\n"
+ },
+ {
+  "t": 0.072,
+  "line": "\n"
+ },
+ {
+  "t": 2.109,
+  "line": "id: 0\n"
+ },
+ {
+  "t": 2.109,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553540.4276252, \"delta\": \"The beam\", \"seq\": 0}\n"
+ },
+ {
+  "t": 2.109,
+  "line": "\n"
+ },
+ {
+  "t": 2.112,
+  "line": "id: 1\n"
+ },
+ {
+  "t": 2.112,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553540.4304838, \"delta\": \" swept across\", \"seq\": 1}\n"
+ },
+ {
+  "t": 2.112,
+  "line": "\n"
+ },
+ {
+  "t": 2.181,
+  "line": "id: 2\n"
+ },
+ {
+  "t": 2.181,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553540.4980135, \"delta\": \" the water at midnight\", \"seq\": 2}\n"
+ },
+ {
+  "t": 2.181,
+  "line": "\n"
+ },
+ {
+  "t": 2.183,
+  "line": "id: 3\n"
+ },
+ {
+  "t": 2.183,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553540.5001001, \"delta\": \", a slow\", \"seq\": 3}\n"
+ },
+ {
+  "t": 2.183,
+  "line": "\n"
+ },
+ {
+  "t": 2.184,
+  "line": "id: 4\n"
+ },
+ {
+  "t": 2.184,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553540.5021484, \"delta\": \" white\", \"seq\": 4}\n"
+ },
+ {
+  "t": 2.184,
+  "line": "\n"
+ },
+ {
+  "t": 2.253,
+  "line": "id: 5\n"
+ },
+ {
+  "t": 2.253,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553540.571425, \"delta\": \" finger tracing the same\", \"seq\": 5}\n"
+ },
+ {
+  "t": 2.253,
+  "line": "\n"
+ },
+ {
+  "t": 2.255,
+  "line": "id: 6\n"
+ },
+ {
+  "t": 2.255,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553540.5736895, \"delta\": \" arc\", \"seq\": 6}\n"
+ },
+ {
+  "t": 2.255,
+  "line": "\n"
+ },
+ {
+  "t": 2.258,
+  "line": "id: 7\n"
+ },
+ {
+  "t": 2.258,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553540.5763457, \"delta\": \" it had traced for\", \"seq\": 7}\n"
+ },
+ {
+  "t": 2.258,
+  "line": "\n"
+ },
+ {
+  "t": 2.325,
+  "line": "id: 8\n"
+ },
+ {
+  "t": 2.325,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553540.643782, \"delta\": \" forty-three\", \"seq\": 8}\n"
+ },
+ {
+  "t": 2.325,
+  "line": "\n"
+ },
+ {
+  "t": 2.328,
+  "line": "id: 9\n"
+ },
+ {
+  "t": 2.328,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553540.6466749, \"delta\": \" years. Elias didn\", \"seq\": 9}\n"
+ },
+ {
+  "t": 2.328,
+  "line": "\n"
+ },
+ {
+  "t": 2.33,
+  "line": "id: 10\n"
+ },
+ {
+  "t": 2.33,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553540.6493387, \"delta\": \"'t count\", \"seq\": 10}\n"
+ },
+ {
+  "t": 2.33,
+  "line": "\n"
+ },
+ {
+  "t": 2.4,
+  "line": "id: 11\n"
+ },
+ {
+  "t": 2.4,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553540.7149165, \"delta\": \" the rotations\", \"seq\": 11}\n"
+ },
+ {
+  "t": 2.4,
+  "line": "\n"
+ },
+ {
+  "t": 2.4,
+  "line": "id: 12\n"
+ },
+ {
+  "t": 2.4,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553540.7167797, \"delta\": \" anymore. He counted\", \"seq\": 12}\n"
+ },
+ {
+  "t": 2.4,
+  "line": "\n"
+ },
+ {
+  "t": 2.401,
+  "line": "id: 13\n"
+ },
+ {
+  "t": 2.401,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553540.7186809, \"delta\": \" the things\", \"seq\": 13}\n"
+ },
+ {
+  "t": 2.401,
+  "line": "\n"
+ },
+ {
+  "t": 2.496,
+  "line": "id: 14\n"
+ },
+ {
+  "t": 2.496,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553540.8145115, \"delta\": \" that mattered\", \"seq\": 14}\n"
+ },
+ {
+  "t": 2.496,
+  "line": "\n"
+ },
+ {
+  "t": 2.973,
+  "line": "id: 15\n"
+ },
+ {
+  "t": 2.973,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.291293, \"delta\": \": the three\", \"seq\": 15}\n"
+ },
+ {
+  "t": 2.973,
+  "line": "\n"
+ },
+ {
+  "t": 2.974,
+  "line": "id: 16\n"
+ },
+ {
+  "t": 2.974,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.2925076, \"delta\": \"-g\", \"seq\": 16}\n"
+ },
+ {
+  "t": 2.974,
+  "line": "\n"
+ },
+ {
+  "t": 2.976,
+  "line": "id: 17\n"
+ },
+ {
+  "t": 2.976,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.293982, \"delta\": \"allon oil cans\", \"seq\": 17}\n"
+ },
+ {
+  "t": 2.976,
+  "line": "\n"
+ },
+ {
+  "t": 2.978,
+  "line": "id: 18\n"
+ },
+ {
+  "t": 2.978,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.2949705, \"delta\": \" in\", \"seq\": 18}\n"
+ },
+ {
+  "t": 2.978,
+  "line": "\n"
+ },
+ {
+  "t": 2.979,
+  "line": "id: 19\n"
+ },
+ {
+  "t": 2.979,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.296029, \"delta\": \" the cell\", \"seq\": 19}\n"
+ },
+ {
+  "t": 2.979,
+  "line": "\n"
+ },
+ {
+  "t": 2.981,
+  "line": "id: 20\n"
+ },
+ {
+  "t": 2.981,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.2969556, \"delta\": \"ar (\", \"seq\": 20}\n"
+ },
+ {
+  "t": 2.981,
+  "line": "\n"
+ },
+ {
+  "t": 2.982,
+  "line": "id: 21\n"
+ },
+ {
+  "t": 2.982,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.2980843, \"delta\": \"twelve), the\", \"seq\": 21}\n"
+ },
+ {
+  "t": 2.982,
+  "line": "\n"
+ },
+ {
+  "t": 2.983,
+  "line": "id: 22\n"
+ },
+ {
+  "t": 2.983,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.2991214, \"delta\": \" days since\", \"seq\": 22}\n"
+ },
+ {
+  "t": 2.983,
+  "line": "\n"
+ },
+ {
+  "t": 2.984,
+  "line": "id: 23\n"
+ },
+ {
+  "t": 2.984,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.3001032, \"delta\": \" the supply\", \"seq\": 23}\n"
+ },
+ {
+  "t": 2.984,
+  "line": "\n"
+ },
+ {
+  "t": 2.985,
+  "line": "id: 24\n"
+ },
+ {
+  "t": 2.985,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.3011563, \"delta\": \" tender\", \"seq\": 24}\n"
+ },
+ {
+  "t": 2.985,
+  "line": "\n"
+ },
+ {
+  "t": 2.986,
+  "line": "id: 25\n"
+ },
+ {
+  "t": 2.986,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.302108, \"delta\": \" made\", \"seq\": 25}\n"
+ },
+ {
+  "t": 2.986,
+  "line": "\n"
+ },
+ {
+  "t": 2.988,
+  "line": "id: 26\n"
+ },
+ {
+  "t": 2.988,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.3032403, \"delta\": \" harbor\", \"seq\": 26}\n"
+ },
+ {
+  "t": 2.988,
+  "line": "\n"
+ },
+ {
+  "t": 2.988,
+  "line": "id: 27\n"
+ },
+ {
+  "t": 2.988,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.304311, \"delta\": \" (se\", \"seq\": 27}\n"
+ },
+ {
+  "t": 2.988,
+  "line": "\n"
+ },
+ {
+  "t": 2.989,
+  "line": "id: 28\n"
+ },
+ {
+  "t": 2.99,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.3053203, \"delta\": \"venteen), the\", \"seq\": 28}\n"
+ },
+ {
+  "t": 2.99,
+  "line": "\n"
+ },
+ {
+  "t": 2.99,
+  "line": "id: 29\n"
+ },
+ {
+  "t": 2.991,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.3063273, \"delta\": \" letters from\", \"seq\": 29}\n"
+ },
+ {
+  "t": 2.991,
+  "line": "\n"
+ },
+ {
+  "t": 2.993,
+  "line": "id: 30\n"
+ },
+ {
+  "t": 2.993,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.307306, \"delta\": \" his daughter\", \"seq\": 30}\n"
+ },
+ {
+  "t": 2.993,
+  "line": "\n"
+ },
+ {
+  "t": 2.994,
+  "line": "id: 31\n"
+ },
+ {
+  "t": 2.994,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.3085797, \"delta\": \" stacked\", \"seq\": 31}\n"
+ },
+ {
+  "t": 2.994,
+  "line": "\n"
+ },
+ {
+  "t": 2.994,
+  "line": "id: 32\n"
+ },
+ {
+  "t": 2.994,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.3095698, \"delta\": \" in the\", \"seq\": 32}\n"
+ },
+ {
+  "t": 2.994,
+  "line": "\n"
+ },
+ {
+  "t": 2.996,
+  "line": "id: 33\n"
+ },
+ {
+  "t": 2.996,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.310601, \"delta\": \" desk drawer (two\", \"seq\": 33}\n"
+ },
+ {
+  "t": 2.996,
+  "line": "\n"
+ },
+ {
+  "t": 2.999,
+  "line": "id: 34\n"
+ },
+ {
+  "t": 2.999,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.3115795, \"delta\": \", both unopened\", \"seq\": 34}\n"
+ },
+ {
+  "t": 2.999,
+  "line": "\n"
+ },
+ {
+  "t": 2.999,
+  "line": "id: 35\n"
+ },
+ {
+  "t": 2.999,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.3126352, \"delta\": \").\\n\\nThe\", \"seq\": 35}\n"
+ },
+ {
+  "t": 2.999,
+  "line": "\n"
+ },
+ {
+  "t": 2.999,
+  "line": "id: 36\n"
+ },
+ {
+  "t": 2.999,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.3148031, \"delta\": \" light\", \"seq\": 36}\n"
+ },
+ {
+  "t": 2.999,
+  "line": "\n"
+ },
+ {
+  "t": 2.999,
+  "line": "id: 37\n"
+ },
+ {
+  "t": 2.999,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.317065, \"delta\": \" itself\", \"seq\": 37}\n"
+ },
+ {
+  "t": 2.999,
+  "line": "\n"
+ },
+ {
+  "t": 3.042,
+  "line": "id: 38\n"
+ },
+ {
+  "t": 3.042,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.3582604, \"delta\": \" was a Fres\", \"seq\": 38}\n"
+ },
+ {
+  "t": 3.042,
+  "line": "\n"
+ },
+ {
+  "t": 3.044,
+  "line": "id: 39\n"
+ },
+ {
+  "t": 3.044,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.3605366, \"delta\": \"nel lens, third\", \"seq\": 39}\n"
+ },
+ {
+  "t": 3.044,
+  "line": "\n"
+ },
+ {
+  "t": 3.044,
+  "line": "id: 40\n"
+ },
+ {
+  "t": 3.044,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.362736, \"delta\": \"-order, installed\", \"seq\": 40}\n"
+ },
+ {
+  "t": 3.044,
+  "line": "\n"
+ },
+ {
+  "t": 3.138,
+  "line": "id: 41\n"
+ },
+ {
+  "t": 3.138,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.4561036, \"delta\": \" in 18\", \"seq\": 41}\n"
+ },
+ {
+  "t": 3.138,
+  "line": "\n"
+ },
+ {
+  "t": 3.142,
+  "line": "id: 42\n"
+ },
+ {
+  "t": 3.142,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.4588945, \"delta\": \"87\", \"seq\": 42}\n"
+ },
+ {
+  "t": 3.142,
+  "line": "\n"
+ },
+ {
+  "t": 3.142,
+  "line": "id: 43\n"
+ },
+ {
+  "t": 3.142,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.4605045, \"delta\": \". Eight\", \"seq\": 43}\n"
+ },
+ {
+  "t": 3.142,
+  "line": "\n"
+ },
+ {
+  "t": 3.384,
+  "line": "id: 44\n"
+ },
+ {
+  "t": 3.384,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.7007256, \"delta\": \" hundred pounds\", \"seq\": 44}\n"
+ },
+ {
+  "t": 3.384,
+  "line": "\n"
+ },
+ {
+  "t": 3.384,
+  "line": "id: 45\n"
+ },
+ {
+  "t": 3.384,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.7023883, \"delta\": \" of hand\", \"seq\": 45}\n"
+ },
+ {
+  "t": 3.384,
+  "line": "\n"
+ },
+ {
+  "t": 3.656,
+  "line": "id: 46\n"
+ },
+ {
+  "t": 3.656,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553541.9742196, \"delta\": \"-ground\", \"seq\": 46}\n"
+ },
+ {
+  "t": 3.656,
+  "line": "\n"
+ },
+ {
+  "t": 3.926,
+  "line": "id: 47\n"
+ },
+ {
+  "t": 3.926,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.2444234, \"delta\": \" pr\", \"seq\": 47}\n"
+ },
+ {
+  "t": 3.926,
+  "line": "\n"
+ },
+ {
+  "t": 3.949,
+  "line": "id: 48\n"
+ },
+ {
+  "t": 3.949,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.267461, \"delta\": \"isms floating\", \"seq\": 48}\n"
+ },
+ {
+  "t": 3.949,
+  "line": "\n"
+ },
+ {
+  "t": 4.03,
+  "line": "id: 49\n"
+ },
+ {
+  "t": 4.03,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.3443842, \"delta\": \" in a mercury\", \"seq\": 49}\n"
+ },
+ {
+  "t": 4.03,
+  "line": "\n"
+ },
+ {
+  "t": 4.03,
+  "line": "id: 50\n"
+ },
+ {
+  "t": 4.03,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.3466878, \"delta\": \" bath. When\", \"seq\": 50}\n"
+ },
+ {
+  "t": 4.03,
+  "line": "\n"
+ },
+ {
+  "t": 4.03,
+  "line": "id: 51\n"
+ },
+ {
+  "t": 4.03,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.348304, \"delta\": \" the mechanism\", \"seq\": 51}\n"
+ },
+ {
+  "t": 4.03,
+  "line": "\n"
+ },
+ {
+  "t": 4.126,
+  "line": "id: 52\n"
+ },
+ {
+  "t": 4.126,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.4406824, \"delta\": \" was\", \"seq\": 52}\n"
+ },
+ {
+  "t": 4.126,
+  "line": "\n"
+ },
+ {
+  "t": 4.126,
+  "line": "id: 53\n"
+ },
+ {
+  "t": 4.126,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.4426348, \"delta\": \" clean and\", \"seq\": 53}\n"
+ },
+ {
+  "t": 4.126,
+  "line": "\n"
+ },
+ {
+  "t": 4.126,
+  "line": "id: 54\n"
+ },
+ {
+  "t": 4.126,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.444497, \"delta\": \" the weight\", \"seq\": 54}\n"
+ },
+ {
+  "t": 4.126,
+  "line": "\n"
+ },
+ {
+  "t": 4.2,
+  "line": "id: 55\n"
+ },
+ {
+  "t": 4.2,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.5138779, \"delta\": \" wound\", \"seq\": 55}\n"
+ },
+ {
+  "t": 4.2,
+  "line": "\n"
+ },
+ {
+  "t": 4.2,
+  "line": "id: 56\n"
+ },
+ {
+  "t": 4.2,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.5154688, \"delta\": \",\", \"seq\": 56}\n"
+ },
+ {
+  "t": 4.2,
+  "line": "\n"
+ },
+ {
+  "t": 4.2,
+  "line": "id: 57\n"
+ },
+ {
+  "t": 4.2,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.517055, \"delta\": \" it turned\", \"seq\": 57}\n"
+ },
+ {
+  "t": 4.2,
+  "line": "\n"
+ },
+ {
+  "t": 4.2,
+  "line": "id: 58\n"
+ },
+ {
+  "t": 4.2,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.5186012, \"delta\": \" with a\", \"seq\": 58}\n"
+ },
+ {
+  "t": 4.2,
+  "line": "\n"
+ },
+ {
+  "t": 4.268,
+  "line": "id: 59\n"
+ },
+ {
+  "t": 4.268,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.5861266, \"delta\": \" sound like breathing\", \"seq\": 59}\n"
+ },
+ {
+  "t": 4.268,
+  "line": "\n"
+ },
+ {
+  "t": 4.275,
+  "line": "id: 60\n"
+ },
+ {
+  "t": 4.275,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.5887854, \"delta\": \". Tonight\", \"seq\": 60}\n"
+ },
+ {
+  "t": 4.275,
+  "line": "\n"
+ },
+ {
+  "t": 4.275,
+  "line": "id: 61\n"
+ },
+ {
+  "t": 4.275,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.5935872, \"delta\": \" it groaned.\", \"seq\": 61}\n"
+ },
+ {
+  "t": 4.275,
+  "line": "\n"
+ },
+ {
+  "t": 4.339,
+  "line": "id: 62\n"
+ },
+ {
+  "t": 4.339,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.6576183, \"delta\": \" The mercury had developed\", \"seq\": 62}\n"
+ },
+ {
+  "t": 4.339,
+  "line": "\n"
+ },
+ {
+  "t": 4.344,
+  "line": "id: 63\n"
+ },
+ {
+  "t": 4.344,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.6602888, \"delta\": \" a tremor\", \"seq\": 63}\n"
+ },
+ {
+  "t": 4.344,
+  "line": "\n"
+ },
+ {
+  "t": 4.344,
+  "line": "id: 64\n"
+ },
+ {
+  "t": 4.344,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.661995, \"delta\": \" \\u2014\", \"seq\": 64}\n"
+ },
+ {
+  "t": 4.344,
+  "line": "\n"
+ },
+ {
+  "t": 4.438,
+  "line": "id: 65\n"
+ },
+ {
+  "t": 4.439,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.7532763, \"delta\": \" not\", \"seq\": 65}\n"
+ },
+ {
+  "t": 4.439,
+  "line": "\n"
+ },
+ {
+  "t": 4.439,
+  "line": "id: 66\n"
+ },
+ {
+  "t": 4.439,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.7550218, \"delta\": \" enough\", \"seq\": 66}\n"
+ },
+ {
+  "t": 4.439,
+  "line": "\n"
+ },
+ {
+  "t": 4.439,
+  "line": "id: 67\n"
+ },
+ {
+  "t": 4.439,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.757213, \"delta\": \" to stop the rotation\", \"seq\": 67}\n"
+ },
+ {
+  "t": 4.439,
+  "line": "\n"
+ },
+ {
+  "t": 4.511,
+  "line": "id: 68\n"
+ },
+ {
+  "t": 4.511,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.8278296, \"delta\": \", enough\", \"seq\": 68}\n"
+ },
+ {
+  "t": 4.511,
+  "line": "\n"
+ },
+ {
+  "t": 4.513,
+  "line": "id: 69\n"
+ },
+ {
+  "t": 4.513,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.8298435, \"delta\": \" to scatter\", \"seq\": 69}\n"
+ },
+ {
+  "t": 4.513,
+  "line": "\n"
+ },
+ {
+  "t": 4.514,
+  "line": "id: 70\n"
+ },
+ {
+  "t": 4.514,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.8323336, \"delta\": \" the beam\", \"seq\": 70}\n"
+ },
+ {
+  "t": 4.514,
+  "line": "\n"
+ },
+ {
+  "t": 4.516,
+  "line": "id: 71\n"
+ },
+ {
+  "t": 4.516,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553542.8350692, \"delta\": \" at\", \"seq\": 71}\n"
+ },
+ {
+  "t": 4.516,
+  "line": "\n"
+ },
+ {
+  "t": 4.774,
+  "line": "id: 72\n"
+ },
+ {
+  "t": 4.774,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553543.092732, \"delta\": \" the edges. Elias\", \"seq\": 72}\n"
+ },
+ {
+  "t": 4.774,
+  "line": "\n"
+ },
+ {
+  "t": 4.777,
+  "line": "id: 73\n"
+ },
+ {
+  "t": 4.777,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553543.0953681, \"delta\": \" had written\", \"seq\": 73}\n"
+ },
+ {
+  "t": 4.777,
+  "line": "\n"
+ },
+ {
+  "t": 4.794,
+  "line": "id: 74\n"
+ },
+ {
+  "t": 4.794,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553543.112469, \"delta\": \" the\", \"seq\": 74}\n"
+ },
+ {
+  "t": 4.794,
+  "line": "\n"
+ },
+ {
+  "t": 5.185,
+  "line": "id: 75\n"
+ },
+ {
+  "t": 5.185,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553543.5032835, \"delta\": \" L\", \"seq\": 75}\n"
+ },
+ {
+  "t": 5.185,
+  "line": "\n"
+ },
+ {
+  "t": 5.443,
+  "line": "id: 76\n"
+ },
+ {
+  "t": 5.443,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553543.7618418, \"delta\": \"ighthouse Board\", \"seq\": 76}\n"
+ },
+ {
+  "t": 5.443,
+  "line": "\n"
+ },
+ {
+  "t": 5.873,
+  "line": "id: 77\n"
+ },
+ {
+  "t": 5.873,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553544.192147, \"delta\": \" three times. Three\", \"seq\": 77}\n"
+ },
+ {
+  "t": 5.873,
+  "line": "\n"
+ },
+ {
+  "t": 6.569,
+  "line": "id: 78\n"
+ },
+ {
+  "t": 6.569,
+  "line": "data: {\"event\": \"run.cancelled\", \"run_id\": \"run_fa0f2efe670f415792e0e30ef1ef36e8\", \"timestamp\": 1792553544.8874836, \"completed\": false, \"partial\": false, \"interrupted\": true, \"turn_exit_reason\": \"interrupted_during_api_call\", \"seq\": 78}\n"
+ },
+ {
+  "t": 6.569,
+  "line": "\n"
+ },
+ {
+  "t": 6.569,
+  "line": ": stream closed\n"
+ },
+ {
+  "t": 6.569,
+  "line": "\n"
+ }
+]

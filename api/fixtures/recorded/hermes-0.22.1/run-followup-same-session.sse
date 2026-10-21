@@ -1,0 +1,28 @@
+: open
+
+id: 0
+data: {"event": "message.delta", "run_id": "run_537534a99eb7494191f00c23eedf8f52", "timestamp": 1792553536.4452155, "delta": "You asked me", "seq": 0}
+
+id: 1
+data: {"event": "message.delta", "run_id": "run_537534a99eb7494191f00c23eedf8f52", "timestamp": 1792553536.7094295, "delta": " to run the `", "seq": 1}
+
+id: 2
+data: {"event": "message.delta", "run_id": "run_537534a99eb7494191f00c23eedf8f52", "timestamp": 1792553536.717296, "delta": "date` command and", "seq": 2}
+
+id: 3
+data: {"event": "message.delta", "run_id": "run_537534a99eb7494191f00c23eedf8f52", "timestamp": 1792553536.8337083, "delta": " tell", "seq": 3}
+
+id: 4
+data: {"event": "message.delta", "run_id": "run_537534a99eb7494191f00c23eedf8f52", "timestamp": 1792553536.8583868, "delta": " you the current time", "seq": 4}
+
+id: 5
+data: {"event": "message.delta", "run_id": "run_537534a99eb7494191f00c23eedf8f52", "timestamp": 1792553536.9160829, "delta": " in one short sentence", "seq": 5}
+
+id: 6
+data: {"event": "message.delta", "run_id": "run_537534a99eb7494191f00c23eedf8f52", "timestamp": 1792553536.9176898, "delta": ".", "seq": 6}
+
+id: 7
+data: {"event": "run.completed", "run_id": "run_537534a99eb7494191f00c23eedf8f52", "timestamp": 1792553538.079418, "output": "You asked me to run the `date` command and tell you the current time in one short sentence.", "usage": {"input_tokens": 15328, "output_tokens": 50, "total_tokens": 15378}, "runtime": {"provider": "", "model": "", "route_source": "global"}, "completed": true, "partial": false, "interrupted": false, "seq": 7}
+
+: stream closed
+

@@ -1,0 +1,40 @@
+id: 1
+event: agent.status
+data: {"type":"agent.status","seq":1,"at":"2026-10-20T19:02:11.000Z","agent_id":"agt_mini_ops","status":"busy","activity":"Running terminal","last_seen_at":"2026-10-20T19:02:11Z","active_runs":1}
+
+id: 2
+event: approval.requested
+data: {"type":"approval.requested","seq":2,"at":"2026-10-20T19:02:12.000Z","approval_id":"apr_01JAC40C","agent_id":"agt_mini_ops","session_id":"ses_01JAC3Y","run_id":"run_01JAC40AB1C2D3E4F5G6H7J8K9","requested_by":"usr_kid","command":"rm -rf ~/build-cache/*"}
+
+id: 3
+event: approval.decided
+data: {"type":"approval.decided","seq":3,"at":"2026-10-20T19:02:13.000Z","approval_id":"apr_01JAC40C","decision":"approve_once","decided_by":"usr_owner"}
+
+id: 4
+event: session.updated
+data: {"type":"session.updated","seq":4,"at":"2026-10-20T19:02:14.000Z","session_id":"ses_01JAC3Y","agent_id":"agt_mini_ops","title":"Disk space","last_message_preview":"121 GB free of 234 GB","active_run_id":null}
+
+id: 5
+event: run.finished
+data: {"type":"run.finished","seq":5,"at":"2026-10-20T19:02:15.000Z","run_id":"run_01JAC3Z8N7Q2W5E8R1T4Y7U0I3","session_id":"ses_01JAC3Y","agent_id":"agt_mini_ops","status":"completed"}
+
+id: 6
+event: job.updated
+data: {"type":"job.updated","seq":6,"at":"2026-10-20T19:02:16.000Z","agent_id":"agt_mini_ops","job_id":"job_price_watch","state":"failed","last_result":"failure"}
+
+id: 7
+event: agent.status
+data: {"type":"agent.status","seq":7,"at":"2026-10-20T19:02:17.000Z","agent_id":"agt_mini_2","status":"offline","activity":null,"last_seen_at":"2026-10-20T18:51:00Z","active_runs":0}
+
+id: 8
+event: member.joined
+data: {"type":"member.joined","seq":8,"at":"2026-10-20T19:02:18.000Z","user_id":"usr_partner","display_name":"Sam","role":"admin"}
+
+id: 9
+event: permissions.changed
+data: {"type":"permissions.changed","seq":9,"at":"2026-10-20T19:02:19.000Z"}
+
+id: 10
+event: resync
+data: {"type":"resync","seq":10,"at":"2026-10-20T19:02:20.000Z"}
+

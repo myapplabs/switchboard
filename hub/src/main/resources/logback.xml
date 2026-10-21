@@ -1,0 +1,9 @@
+<!-- Plain lines to stdout (journald adds the time). Requests are logged as method, path and status only. -->
+<configuration>
+  <appender name="OUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder><pattern>%-5level %logger{20} - %msg%n</pattern></encoder>
+  </appender>
+  <logger name="io.netty" level="WARN"/>
+  <logger name="com.yubico" level="WARN"/>
+  <root level="INFO"><appender-ref ref="OUT"/></root>
+</configuration>

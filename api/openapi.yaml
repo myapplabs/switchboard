@@ -1,0 +1,2096 @@
+openapi: 3.1.0
+info:
+  title: Switchboard Hub API
+  version: 0.4.0
+  summary: The API between the Switchboard app and a Switchboard hub.
+  description: |
+    The app talks only to the hub; the hub talks to agents (Hermes Agent first) through adapters.
+    This API is agent-neutral: the app branches on **capabilities**, never on agent type.
+
+    - Versioned in the path (`/v1`). Within v1, changes are additive: clients must ignore unknown
+      fields and treat unknown enum values as "other" (e.g. an unknown agent status as offline).
+    - Streams (run events, the per-user event channel) are Server-Sent Events — see `events.md`.
+    - `x-release` on each operation: `mvp`, `v1` or `v2` — the Switchboard milestone that needs it.
+    - Errors are Problem Details (`application/problem+json`) with a stable `code`.
+    - Hermes-specific behaviour behind this API is recorded in `docs/hermes-0.14-findings.md` (with a 0.22.1 update).
+
+    **Where conversations live (0.2.0, hybrid).** The hub stores every conversation: each message, tool
+    call and run, saved as it streams through. That copy is what the app shows, searches and deletes, and it
+    stays readable while an agent is offline. Agents that keep sessions themselves (Hermes 0.22) are
+    given the hub conversation's own agent session, one per conversation and user, so the hub continues it
+    instead of resending the history. If the agent has lost that session, or keeps none (OpenClaw,
+    OpenAI-compatible), the hub sends the history from its copy. None of this is visible to the app.
+
+    Status: **draft**. Hub M0 (hub, auth, agents, `/me/events`) is implemented; sessions and runs (M1)
+    are not yet.
+  license:
+    name: TBD (open source; license to be chosen)
+servers:
+  - url: https://{hub}/v1
+    variables:
+      hub:
+        default: hub.example.ts.net
+        description: The hub's HTTPS host (Tailscale Serve MagicDNS name in Phases 1–2).
+
+security:
+  - bearer: []
+
+tags:
+  - { name: hub, description: "Hub identity and pairing (no auth)" }
+  - { name: auth, description: "Passkeys (WebAuthn) and tokens" }
+  - { name: me, description: "The signed-in user, devices, per-user events" }
+  - { name: members, description: "Members and invites (owner/admin)" }
+  - { name: agents, description: "Agents, health, capabilities, models, grants" }
+  - { name: sessions, description: "Conversations — stored by the hub; continued on the agent's own session where it has one" }
+  - { name: runs, description: "One agent turn, streamed" }
+  - { name: approvals, description: "Risky actions waiting for a person" }
+  - { name: jobs, description: "Scheduled agent jobs (agents whose adapter supports jobs)" }
+  - { name: activity, description: "Append-only activity log (owner/admin)" }
+  - { name: quick-commands, description: "Prompt templates" }
+  - { name: forge, description: "FORGE tickets on the board, through a bridge where FORGE runs (v1.1, M5)" }
+  - { name: tasks, description: "The task board: cards with steps on agents, a person's Review before Done (v1.1, M5)" }
+
+paths:
+  # ── hub ────────────────────────────────────────────────────────────────────
+  /hub:
+    get:
+      tags: [hub]
+      operationId: getHub
+      summary: Hub identity, used before sign-in (pairing, invite screens)
+      x-release: mvp
+      security: []
+      responses:
+        "200":
+          description: The hub
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HubInfo" }
+
+  /invites/{invite}:
+    get:
+      tags: [hub]
+      operationId: previewInvite
+      summary: What an invite is for (hub, inviter, role), before accepting — {invite} is the invite code
+      x-release: v1
+      security: []
+      parameters: [{ $ref: "#/components/parameters/InviteCode" }]
+      responses:
+        "200":
+          description: Invite preview
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InvitePreview" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "410": { $ref: "#/components/responses/Problem" }
+
+  # ── auth ───────────────────────────────────────────────────────────────────
+    delete:
+      tags: [members]
+      operationId: revokeInvite
+      summary: Revoke an open invite — {invite} is the invite id
+      x-release: v1
+      parameters: [{ name: invite, in: path, required: true, schema: { type: string } }]
+      responses:
+        "204": { description: 'Revoked' }
+
+  /auth/passkeys/register/options:
+    post:
+      tags: [auth]
+      operationId: passkeyRegisterOptions
+      summary: Start creating an account with a passkey
+      description: |
+        Exactly one of `setup_code` (first run: the owner pairs with a new hub; the code is shown by
+        the hub's installer / QR) or `invite_code` (a member joining) is required.
+      x-release: mvp
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [display_name]
+              properties:
+                setup_code: { type: string }
+                invite_code: { type: string }
+                display_name: { type: string, minLength: 1, maxLength: 60 }
+                device_name: { type: string, maxLength: 60 }
+      responses:
+        "200":
+          description: WebAuthn creation options
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PasskeyCeremony" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "410": { $ref: "#/components/responses/Problem" }
+
+  /auth/passkeys/register/verify:
+    post:
+      tags: [auth]
+      operationId: passkeyRegisterVerify
+      summary: Finish creating the account; returns tokens
+      x-release: mvp
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PasskeyResult" }
+      responses:
+        "200":
+          description: Signed in
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "400": { $ref: "#/components/responses/Problem" }
+
+  /auth/passkeys/login/options:
+    post:
+      tags: [auth]
+      operationId: passkeyLoginOptions
+      summary: Start signing in with a passkey
+      x-release: mvp
+      security: []
+      responses:
+        "200":
+          description: WebAuthn request options
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PasskeyCeremony" }
+
+  /auth/passkeys/login/verify:
+    post:
+      tags: [auth]
+      operationId: passkeyLoginVerify
+      summary: Finish signing in; returns tokens
+      x-release: mvp
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PasskeyResult" }
+      responses:
+        "200":
+          description: Signed in
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "401": { $ref: "#/components/responses/Problem" }
+
+  /auth/refresh:
+    post:
+      tags: [auth]
+      operationId: refreshToken
+      summary: Exchange a refresh token for new tokens (refresh tokens rotate)
+      x-release: mvp
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: { type: string }
+      responses:
+        "200":
+          description: New tokens
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Tokens" }
+        "401": { $ref: "#/components/responses/Problem" }
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      summary: Revoke this device's tokens
+      x-release: mvp
+      responses:
+        "204": { description: 'Signed out' }
+
+  # ── me ─────────────────────────────────────────────────────────────────────
+  /me:
+    get:
+      tags: [me]
+      operationId: getMe
+      summary: The signed-in user, role and what they may do
+      x-release: mvp
+      responses:
+        "200":
+          description: Me
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "401": { $ref: "#/components/responses/Problem" }
+
+  /me/events:
+    get:
+      tags: [me]
+      operationId: streamMyEvents
+      summary: Per-user live event channel (SSE) — see events.md
+      x-release: mvp
+      parameters:
+        - { name: Last-Event-ID, in: header, required: false, schema: { type: string } }
+      responses:
+        "200":
+          description: text/event-stream of UserEvent (events.md)
+          content:
+            text/event-stream:
+              schema: { type: string }
+
+  /devices:
+    get:
+      tags: [me]
+      operationId: listMyDevices
+      summary: My signed-in devices
+      x-release: v1
+      responses:
+        "200":
+          description: Devices
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Device" } }
+    post:
+      tags: [me]
+      operationId: registerDevice
+      summary: Register this device for push notifications
+      x-release: v1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [platform, push_token]
+              properties:
+                platform: { type: string, enum: [ios, android] }
+                push_token: { type: string }
+                relay_grant: { type: string, description: 'From the push relay (POST /api/register on push-relay/); the hub presents it with each notice' }
+                name: { type: string, maxLength: 60 }
+                notify_prefs: { $ref: "#/components/schemas/NotifyPrefs" }
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Device" }
+
+  /devices/{device_id}:
+    patch:
+      tags: [me]
+      operationId: updateDevice
+      x-release: v1
+      parameters: [{ $ref: "#/components/parameters/DeviceId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                push_token: { type: string }
+                relay_grant: { type: string }
+                notify_prefs: { $ref: "#/components/schemas/NotifyPrefs" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Device" }
+    delete:
+      tags: [me]
+      operationId: removeDevice
+      summary: Sign a device out and stop its notifications
+      x-release: v1
+      parameters: [{ $ref: "#/components/parameters/DeviceId" }]
+      responses:
+        "204": { description: 'Removed' }
+
+  # ── members ────────────────────────────────────────────────────────────────
+  /members:
+    get:
+      tags: [members]
+      operationId: listMembers
+      x-release: v1
+      responses:
+        "200":
+          description: Members
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Member" } }
+        "403": { $ref: "#/components/responses/Problem" }
+
+  /members/{user_id}:
+    patch:
+      tags: [members]
+      operationId: updateMember
+      summary: Change a member's role (owner; admins for non-owners)
+      x-release: v1
+      parameters: [{ $ref: "#/components/parameters/UserId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role: { $ref: "#/components/schemas/Role" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Member" }
+        "403": { $ref: "#/components/responses/Problem" }
+    delete:
+      tags: [members]
+      operationId: removeMember
+      summary: Remove a member — revokes their tokens immediately
+      x-release: v1
+      parameters: [{ $ref: "#/components/parameters/UserId" }]
+      responses:
+        "204": { description: 'Removed' }
+        "403": { $ref: "#/components/responses/Problem" }
+
+  /invites:
+    get:
+      tags: [members]
+      operationId: listInvites
+      x-release: v1
+      responses:
+        "200":
+          description: Open invites
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Invite" } }
+    post:
+      tags: [members]
+      operationId: createInvite
+      summary: Create a single-use invite (expires in 24 h)
+      x-release: v1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { $ref: "#/components/schemas/Role" }
+                note: { type: string, maxLength: 120 }
+      responses:
+        "201":
+          description: The invite — `code` and `url` are returned only here
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InviteCreated" }
+        "403": { $ref: "#/components/responses/Problem" }
+
+  # ── agents ─────────────────────────────────────────────────────────────────
+  /agents:
+    get:
+      tags: [agents]
+      operationId: listAgents
+      summary: Agents the user may see, with live status, capabilities and their permissions
+      x-release: mvp
+      responses:
+        "200":
+          description: Agents
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Agent" } }
+    post:
+      tags: [agents]
+      operationId: addAgent
+      summary: Add an agent (owner). The hub validates the connection and stores the keys.
+      x-release: mvp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AgentInput" }
+      responses:
+        "201":
+          description: Added
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Agent" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "422":
+          description: The connection test failed — `code` says why (agent_unreachable, agent_key_rejected, not_supported)
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ConnectionTestProblem" }
+
+  /agents/test:
+    post:
+      tags: [agents]
+      operationId: testAgentConnection
+      summary: Test an agent connection without saving it (owner)
+      x-release: mvp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AgentInput" }
+      responses:
+        "200":
+          description: Result with a reason per check
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConnectionTest" }
+
+  /agents/{agent_id}:
+    get:
+      tags: [agents]
+      operationId: getAgent
+      x-release: mvp
+      parameters: [{ $ref: "#/components/parameters/AgentId" }]
+      responses:
+        "200":
+          description: The agent
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Agent" }
+        "404": { $ref: "#/components/responses/Problem" }
+    patch:
+      tags: [agents]
+      operationId: updateAgent
+      summary: Rename, change URL or keys (owner); describe what it's good at (owner or admin); keys are write-only
+      x-release: mvp
+      parameters: [{ $ref: "#/components/parameters/AgentId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AgentPatch" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Agent" }
+        "403": { $ref: "#/components/responses/Problem" }
+    delete:
+      tags: [agents]
+      operationId: removeAgent
+      x-release: mvp
+      parameters: [{ $ref: "#/components/parameters/AgentId" }]
+      responses:
+        "204": { description: 'Removed' }
+        "403": { $ref: "#/components/responses/Problem" }
+
+  /agents/{agent_id}/models:
+    get:
+      tags: [agents]
+      operationId: listAgentModels
+      summary: Models the user may pick on this agent (only granted ones)
+      x-release: v1
+      parameters: [{ $ref: "#/components/parameters/AgentId" }]
+      responses:
+        "200":
+          description: Models
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Model" } }
+
+  /agents/{agent_id}/grants:
+    get:
+      tags: [agents]
+      operationId: getAgentGrants
+      summary: Who may use this agent, through which profile and models (owner/admin)
+      x-release: v1
+      parameters: [{ $ref: "#/components/parameters/AgentId" }]
+      responses:
+        "200":
+          description: Grants
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgentGrants" }
+    put:
+      tags: [agents]
+      operationId: setAgentGrants
+      summary: Replace the grants (owner). Deny by default.
+      x-release: v1
+      parameters: [{ $ref: "#/components/parameters/AgentId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AgentGrants" }
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgentGrants" }
+        "403": { $ref: "#/components/responses/Problem" }
+
+  # ── sessions (hub-owned conversations) ─────────────────────────────────────
+  /sessions:
+    get:
+      tags: [sessions]
+      operationId: listSessions
+      summary: My sessions and those shared with me, newest first
+      x-release: mvp
+      parameters:
+        - { name: agent_id, in: query, schema: { type: string } }
+        - { name: q, in: query, description: 'Search titles and messages', schema: { type: string } }
+        - { $ref: "#/components/parameters/Cursor" }
+        - { $ref: "#/components/parameters/Limit" }
+      responses:
+        "200":
+          description: A page of sessions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/ChatSession" } }
+                  next_cursor: { type: [string, "null"] }
+    post:
+      tags: [sessions]
+      operationId: createSession
+      x-release: mvp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent_id]
+              properties:
+                agent_id: { type: string }
+                title: { type: string, maxLength: 120 }
+                model_id: { type: string, description: 'A model from listAgentModels (must be granted); default the agent''s default. Agents with capabilities.model_switching run it directly; others route to the profile serving it.' }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatSession" }
+        "403": { $ref: "#/components/responses/Problem" }
+
+  /sessions/{session_id}:
+    get:
+      tags: [sessions]
+      operationId: getSession
+      x-release: mvp
+      parameters: [{ $ref: "#/components/parameters/SessionId" }]
+      responses:
+        "200":
+          description: The session
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatSession" }
+        "404": { $ref: "#/components/responses/Problem" }
+    patch:
+      tags: [sessions]
+      operationId: updateSession
+      summary: Rename, switch model, or share (owner of the session)
+      description: |
+        Switching `model_id` applies from the next run; the conversation (and the agent session) is kept.
+        Not while a run is active (409 `run_active`).
+      x-release: mvp
+      parameters: [{ $ref: "#/components/parameters/SessionId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string, maxLength: 120 }
+                model_id: { type: string }
+                shared_with: { $ref: "#/components/schemas/ShareTarget", x-release: v1 }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatSession" }
+        "403": { $ref: "#/components/responses/Problem" }
+    delete:
+      tags: [sessions]
+      operationId: deleteSession
+      summary: Delete the conversation everywhere
+      description: |
+        Deletes the hub's copy at once (messages, runs, tool calls) and the agent-side session, if any.
+        If the agent is offline, the hub retries the agent-side delete until it succeeds; the
+        conversation is gone for the app immediately. A run must not be active (409 `run_active`).
+      x-release: mvp
+      parameters: [{ $ref: "#/components/parameters/SessionId" }]
+      responses:
+        "204": { description: 'Deleted' }
+
+  /sessions/{session_id}/messages:
+    get:
+      tags: [sessions]
+      operationId: listMessages
+      summary: Messages, oldest first, with tool calls (output truncated to 4 KB)
+      x-release: mvp
+      parameters:
+        - { $ref: "#/components/parameters/SessionId" }
+        - { $ref: "#/components/parameters/Cursor" }
+        - { $ref: "#/components/parameters/Limit" }
+      responses:
+        "200":
+          description: A page of messages
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Message" } }
+                  next_cursor: { type: [string, "null"] }
+
+  /sessions/{session_id}/runs:
+    post:
+      tags: [runs]
+      operationId: startRun
+      summary: Send a message — starts a run; stream it with streamRunEvents
+      description: |
+        The hub stores the message, routes to the profile for the user's role (tool level) and the
+        session's model, applies limits, and returns at once. One active run per session.
+
+        Continuity (hybrid): on an agent with its own sessions, the hub continues the conversation's
+        agent session; when the agent no longer has it, or keeps none, the hub sends the history from
+        its own copy. Either way the app sends only the new message.
+      x-release: mvp
+      parameters: [{ $ref: "#/components/parameters/SessionId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RunInput" }
+      responses:
+        "202":
+          description: Started
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Run" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "429": { $ref: "#/components/responses/Problem" }
+        "503": { $ref: "#/components/responses/Problem" }
+
+  /runs/{run_id}:
+    get:
+      tags: [runs]
+      operationId: getRun
+      summary: Run status and, when finished, its output — kept by the hub
+      x-release: mvp
+      parameters: [{ $ref: "#/components/parameters/RunId" }]
+      responses:
+        "200":
+          description: The run
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Run" }
+        "404": { $ref: "#/components/responses/Problem" }
+
+  /runs/{run_id}/events:
+    get:
+      tags: [runs]
+      operationId: streamRunEvents
+      summary: SSE stream of a run's events — see events.md (resumable with Last-Event-ID)
+      x-release: mvp
+      parameters:
+        - { $ref: "#/components/parameters/RunId" }
+        - { name: Last-Event-ID, in: header, required: false, schema: { type: string } }
+      responses:
+        "200":
+          description: text/event-stream of RunEvent (events.md)
+          content:
+            text/event-stream:
+              schema: { type: string }
+        "404": { $ref: "#/components/responses/Problem" }
+
+  /runs/{run_id}/stop:
+    post:
+      tags: [runs]
+      operationId: stopRun
+      x-release: mvp
+      parameters: [{ $ref: "#/components/parameters/RunId" }]
+      responses:
+        "202": { description: 'Stopping — the stream ends with run.cancelled' }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+
+  /runs/{run_id}/steer:
+    post:
+      tags: [runs]
+      operationId: steerRun
+      summary: Add guidance to a run while it works (capabilities.steer)
+      description: |
+        The text reaches the agent mid-run, without stopping it, e.g. "use the staging server instead".
+        Only the person who started the run (or, in a shared session, a participant). It is stored as a
+        message with `kind: steer` and announced with a `steer.accepted` run event. 409
+        `run_not_accepting_input` when the run is not running (queued, waiting, finishing).
+      x-release: v1
+      parameters: [{ $ref: "#/components/parameters/RunId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string, minLength: 1, maxLength: 4000 }
+      responses:
+        "202": { description: 'Accepted — see steer.accepted' }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+
+  /runs/{run_id}/clarifications/{clarification_id}:
+    post:
+      tags: [runs]
+      operationId: answerClarification
+      summary: Answer the agent's question (capabilities.clarify)
+      description: |
+        The agent paused to ask (`clarify.requested`); the run waits (`waiting_for_input`) until it is
+        answered, it times out (`expires_at`) or the run is stopped. Answered by the person who started
+        the run. `answer` is free text, or one of `choices`; with `multi_select`, a list of choices.
+      x-release: mvp
+      parameters:
+        - { $ref: "#/components/parameters/RunId" }
+        - { name: clarification_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [answer]
+              properties:
+                answer:
+                  oneOf:
+                    - { type: string, minLength: 1, maxLength: 4000 }
+                    - { type: array, minItems: 1, items: { type: string } }
+      responses:
+        "200": { description: 'Answered — the run continues (clarify.answered)' }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+
+  /ask-all:
+    post:
+      tags: [runs]
+      operationId: askAll
+      summary: Send one prompt to several agents; one new session and run per agent
+      x-release: v1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent_ids, text]
+              properties:
+                agent_ids: { type: array, minItems: 2, maxItems: 8, items: { type: string } }
+                text: { type: string, minLength: 1 }
+      responses:
+        "202":
+          description: Started (agents that failed to start are listed with a problem)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [agent_id]
+                      properties:
+                        agent_id: { type: string }
+                        session_id: { type: string }
+                        run_id: { type: string }
+                        problem: { $ref: "#/components/schemas/Problem" }
+
+  # ── approvals ──────────────────────────────────────────────────────────────
+  /approvals:
+    get:
+      tags: [approvals]
+      operationId: listApprovals
+      summary: Approvals I may decide (pending by default)
+      x-release: v1
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [pending, decided], default: pending } }
+      responses:
+        "200":
+          description: Approvals
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Approval" } }
+
+  /approvals/{approval_id}/decision:
+    post:
+      tags: [approvals]
+      operationId: decideApproval
+      summary: Approve or deny — the first valid decision wins
+      x-release: v1
+      parameters:
+        - { name: approval_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: { $ref: "#/components/schemas/ApprovalDecision" }
+      responses:
+        "200":
+          description: Decided
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Approval" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "409":
+          description: Already decided by someone else (`code` approval_already_decided)
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+
+  # ── jobs ───────────────────────────────────────────────────────────────────
+  /agents/{agent_id}/jobs:
+    get:
+      tags: [jobs]
+      operationId: listJobs
+      x-release: v1
+      parameters: [{ $ref: "#/components/parameters/AgentId" }]
+      responses:
+        "200":
+          description: Jobs
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Job" } }
+        "404": { $ref: "#/components/responses/Problem" }
+    post:
+      tags: [jobs]
+      operationId: createJob
+      x-release: v1
+      parameters: [{ $ref: "#/components/parameters/AgentId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/JobInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "403": { $ref: "#/components/responses/Problem" }
+
+  /agents/{agent_id}/jobs/{job_id}:
+    get:
+      tags: [jobs]
+      operationId: getJob
+      x-release: v1
+      parameters: [{ $ref: "#/components/parameters/AgentId" }, { $ref: "#/components/parameters/JobId" }]
+      responses:
+        "200":
+          description: The job with recent runs
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+    patch:
+      tags: [jobs]
+      operationId: updateJob
+      x-release: v1
+      parameters: [{ $ref: "#/components/parameters/AgentId" }, { $ref: "#/components/parameters/JobId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/JobPatch" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+    delete:
+      tags: [jobs]
+      operationId: deleteJob
+      x-release: v1
+      parameters: [{ $ref: "#/components/parameters/AgentId" }, { $ref: "#/components/parameters/JobId" }]
+      responses:
+        "204": { description: 'Deleted' }
+
+  /agents/{agent_id}/jobs/{job_id}/{action}:
+    post:
+      tags: [jobs]
+      operationId: jobAction
+      summary: pause, resume, or run now
+      x-release: v1
+      parameters:
+        - { $ref: "#/components/parameters/AgentId" }
+        - { $ref: "#/components/parameters/JobId" }
+        - { name: action, in: path, required: true, schema: { type: string, enum: [pause, resume, run] } }
+      responses:
+        "200":
+          description: The job after the action
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+
+  # ── activity ───────────────────────────────────────────────────────────────
+  /activity:
+    get:
+      tags: [activity]
+      operationId: listActivity
+      summary: Who did what (owner/admin); 90-day default retention
+      x-release: v1
+      parameters:
+        - { name: user_id, in: query, schema: { type: string } }
+        - { name: agent_id, in: query, schema: { type: string } }
+        - { $ref: "#/components/parameters/Cursor" }
+        - { $ref: "#/components/parameters/Limit" }
+      responses:
+        "200":
+          description: A page, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Activity" } }
+                  next_cursor: { type: [string, "null"] }
+        "403": { $ref: "#/components/responses/Problem" }
+
+  # ── quick commands ─────────────────────────────────────────────────────────
+  /quick-commands:
+    get:
+      tags: [quick-commands]
+      operationId: listQuickCommands
+      x-release: v1
+      responses:
+        "200":
+          description: My personal commands and everyone's
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/QuickCommand" } }
+    post:
+      tags: [quick-commands]
+      operationId: createQuickCommand
+      x-release: v1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/QuickCommandInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/QuickCommand" }
+
+  /quick-commands/{command_id}:
+    patch:
+      tags: [quick-commands]
+      operationId: updateQuickCommand
+      x-release: v1
+      parameters:
+        - { name: command_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/QuickCommandInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/QuickCommand" }
+    delete:
+      tags: [quick-commands]
+      operationId: deleteQuickCommand
+      x-release: v1
+      parameters:
+        - { name: command_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: 'Deleted' }
+
+  /tasks:
+    get:
+      tags: [tasks]
+      operationId: listTasks
+      summary: The board — my cards (owner and admins see everyone's)
+      x-release: v1.1
+      parameters:
+        - { name: column, in: query, required: false, schema: { $ref: "#/components/schemas/TaskColumn" } }
+      responses:
+        "200":
+          description: Cards in board order
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Task" } }
+    post:
+      tags: [tasks]
+      operationId: createTask
+      summary: Make a card; in Ready it starts when its first step's agent is free
+      x-release: v1.1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TaskInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Task" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+
+  /tasks/{task_id}:
+    parameters: [{ $ref: "#/components/parameters/TaskId" }]
+    get:
+      tags: [tasks]
+      operationId: getTask
+      x-release: v1.1
+      responses:
+        "200":
+          description: The card, with its steps
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Task" }
+        "404": { $ref: "#/components/responses/Problem" }
+    patch:
+      tags: [tasks]
+      operationId: updateTask
+      summary: Change a card in Backlog, Ready or Needs you (creator, owner, admins)
+      description: Finished steps keep their results while they stay the same; changed and later steps start over.
+      x-release: v1.1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TaskPatch" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Task" }
+        "409": { $ref: "#/components/responses/Problem" }
+    delete:
+      tags: [tasks]
+      operationId: deleteTask
+      summary: Delete a card (not while a step runs); its step conversations stay
+      x-release: v1.1
+      responses:
+        "204": { description: 'Deleted' }
+        "409": { $ref: "#/components/responses/Problem" }
+
+  /tasks/{task_id}/move:
+    post:
+      tags: [tasks]
+      operationId: moveTask
+      summary: People move cards between Backlog and Ready, or retry from Needs you
+      description: |
+        The hub moves cards to Working, Needs you and Review; only Review moves a card to Done. Moving to
+        anything else is `409 task_conflict`, as is retrying a card that reached a limit or whose step is
+        waiting for an answer (answer it in the step's conversation).
+      x-release: v1.1
+      parameters: [{ $ref: "#/components/parameters/TaskId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [column]
+              properties:
+                column: { type: string, enum: [backlog, ready] }
+                position: { type: number, description: 'Board order; omit to keep' }
+      responses:
+        "200":
+          description: Moved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Task" }
+        "409": { $ref: "#/components/responses/Problem" }
+
+  /tasks/{task_id}/review:
+    post:
+      tags: [tasks]
+      operationId: reviewTask
+      summary: Accept, send back with a note, or close (creator, owner, admins)
+      description: |
+        For a coordinated card waiting with reason `plan`: `accept` approves the plan (its sub-cards start),
+        `send_back` asks for another plan (with the note), `close` ends it. Sub-cards are reviewed with their card
+        (only `close` works on them); accepting the card accepts its sub-cards.
+        Otherwise `accept` ends the card (or, with `review_each_step`, continues with the next step); `send_back` reruns
+        `step` (default: the last finished) and the steps after it with the note, up to the card's
+        `max_send_backs`; `close` ends it as not used. Agents never end a card.
+      x-release: v1.1
+      parameters: [{ $ref: "#/components/parameters/TaskId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [accept, send_back, close] }
+                note: { type: string, minLength: 1, maxLength: 5000, description: 'Required for send_back' }
+                step: { type: integer, minimum: 0, description: 'send_back: the step to redo (0-based)' }
+      responses:
+        "200":
+          description: Reviewed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Task" }
+        "409": { $ref: "#/components/responses/Problem" }
+
+  /forge/bridges:
+    get:
+      tags: [forge]
+      operationId: listForgeBridges
+      summary: My FORGE connections
+      x-release: v1.1
+      responses:
+        "200":
+          description: Connections (never their tokens)
+          content:
+            application/json:
+              schema: { type: object, required: [items], properties: { items: { type: array, items: { $ref: "#/components/schemas/ForgeBridge" } } } }
+    post:
+      tags: [forge]
+      operationId: createForgeBridge
+      summary: A new FORGE connection and its one-time code (10 minutes) for `forge switchboard connect --code`; not for restricted members
+      x-release: v1.1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [name], properties: { name: { type: string, minLength: 1, maxLength: 40 } } }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { type: object, required: [bridge, code, code_expires_at], properties: { bridge: { $ref: "#/components/schemas/ForgeBridge" }, code: { type: string, example: XFNA-JYAG, description: 'One use; FORGE trades it for its own token (the app never sees the token)' }, code_expires_at: { type: string, format: date-time } } }
+
+  /forge/bridges/{bridge_id}:
+    delete:
+      tags: [forge]
+      operationId: revokeForgeBridge
+      x-release: v1.1
+      parameters: [{ name: bridge_id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "204": { description: 'Revoked; the bridge stops' }
+
+  /forge/cards:
+    get:
+      tags: [forge]
+      operationId: forgeCards
+      summary: My FORGE tickets as board cards, read from FORGE through my bridge (cached ~15 s)
+      x-release: v1.1
+      parameters:
+        - { name: fresh, in: query, required: false, schema: { type: boolean } }
+      responses:
+        "200":
+          description: The cards, or connected false
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ForgeBoard" }
+
+  /forge/tickets/start:
+    post:
+      tags: [forge]
+      operationId: startForgeTicket
+      summary: Preview (readiness, estimate) a ticket's run; with confirmed true, start it (spends credits)
+      x-release: v1.1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [project, ticket]
+              properties:
+                project: { type: string }
+                ticket: { type: string, pattern: '^T-[0-9]{3,}$' }
+                confirmed: { type: boolean, default: false }
+      responses:
+        "200": { description: "FORGE's answer (forge_start_ticket): a preview {started false, spec_verdict, spec_score, estimate_usd {low, typical, high, basis} or null} or {started true, run_id…}", content: { application/json: { schema: { type: object } } } }
+        "503": { $ref: "#/components/responses/Problem" }
+
+  /forge/runs/{run_id}:
+    get:
+      tags: [forge]
+      operationId: forgeRun
+      summary: "A FORGE run: phase, gate, the review's recommendation, questions (forge_run)"
+      x-release: v1.1
+      parameters: [{ name: run_id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: "FORGE's answer", content: { application/json: { schema: { type: object } } } }
+
+  /forge/runs/{run_id}/decide:
+    post:
+      tags: [forge]
+      operationId: decideForgeRun
+      summary: Approve or reject the gate a FORGE run waits at, recorded in FORGE as mine, from this app
+      x-release: v1.1
+      parameters: [{ name: run_id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [approve, reject] }
+                note: { type: string, description: 'Required to reject: what should change' }
+      responses:
+        "200": { description: "FORGE's answer (forge_decide)", content: { application/json: { schema: { type: object } } } }
+
+  /forge/bridge/pair:
+    post:
+      tags: [forge]
+      operationId: forgeBridgePair
+      summary: FORGE trades the one-time code for its bridge token (no auth; once; within 10 minutes)
+      x-release: v1.1
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [code], properties: { code: { type: string } } }
+      responses:
+        "200":
+          description: The bridge's token (FORGE keeps it in its keychain)
+          content:
+            application/json:
+              schema: { type: object, required: [token, bridge_id, name], properties: { token: { type: string }, bridge_id: { type: string }, name: { type: string } } }
+        "401": { $ref: "#/components/responses/Problem" }
+
+  /forge/bridge/poll:
+    post:
+      tags: [forge]
+      operationId: forgeBridgePoll
+      summary: "The bridge asks for work (bridge token, not a person's); held up to 25 s"
+      x-release: v1.1
+      security: [{ forgeBridge: [] }]
+      responses:
+        "200":
+          description: Tool calls to run, maybe none
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [calls]
+                properties:
+                  calls:
+                    type: array
+                    items: { type: object, required: [id, tool, arguments], properties: { id: { type: string }, tool: { type: string }, arguments: { type: object } } }
+        "401": { $ref: "#/components/responses/Problem" }
+
+  /forge/bridge/results:
+    post:
+      tags: [forge]
+      operationId: forgeBridgeResults
+      summary: The bridge's answers
+      x-release: v1.1
+      security: [{ forgeBridge: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [results]
+              properties:
+                results:
+                  type: array
+                  items: { type: object, required: [id, ok], properties: { id: { type: string }, ok: { type: boolean }, result: {}, error: { type: string } } }
+      responses:
+        "204": { description: 'Received' }
+
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      description: Short-lived access token (15 min) from the passkey flow; renew with /auth/refresh.
+    forgeBridge:
+      type: http
+      scheme: bearer
+      description: A FORGE bridge's own token (fbt_…), from createForgeBridge; only for /forge/bridge/*.
+
+  parameters:
+    AgentId: { name: agent_id, in: path, required: true, schema: { type: string } }
+    SessionId: { name: session_id, in: path, required: true, schema: { type: string } }
+    RunId: { name: run_id, in: path, required: true, schema: { type: string } }
+    JobId: { name: job_id, in: path, required: true, schema: { type: string } }
+    UserId: { name: user_id, in: path, required: true, schema: { type: string } }
+    TaskId: { name: task_id, in: path, required: true, schema: { type: string } }
+    DeviceId: { name: device_id, in: path, required: true, schema: { type: string } }
+    InviteCode: { name: invite, in: path, required: true, description: 'The invite code', schema: { type: string } }
+    Cursor: { name: cursor, in: query, required: false, schema: { type: string } }
+    Limit: { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 30 } }
+
+  responses:
+    Problem:
+      description: An error (Problem Details)
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+
+  schemas:
+    Problem:
+      type: object
+      description: RFC 9457 Problem Details with a stable machine code.
+      required: [code, title, status]
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string, description: 'Human-readable, safe to show the user' }
+        code: { $ref: "#/components/schemas/ErrorCode" }
+        retry_after_s: { type: integer, description: 'For rate_limited / agent_busy' }
+
+    ErrorCode:
+      type: string
+      description: Open enum — clients treat unknown codes as a generic error.
+      enum:
+        - unauthorized            # 401: no/expired token
+        - forbidden               # 403: role or grant does not allow it (UI should have hidden it)
+        - not_found               # 404
+        - validation_failed       # 400
+        - setup_code_invalid      # 400/410
+        - invite_expired          # 410
+        - invite_used             # 410
+        - agent_offline           # 503: the agent does not answer
+        - agent_unreachable       # 422 on add/test: connection refused or timed out
+        - agent_key_rejected      # 503/422: the agent returned 401/403 — owner must fix the key
+        - agent_busy              # 429: the agent is at its concurrent-run limit; retry_after_s
+        - not_supported           # 404/422: the agent's adapter lacks this capability
+        - run_active              # 409: the session already has an active run
+        - run_finished            # 409: stop on a finished run
+        - run_interrupted         # run.failed: the hub lost the run (the agent no longer knows it)
+        - run_not_accepting_input # 409: steer/answer when the run is not in a state that takes it
+        - agent_error             # 502 / run.failed: the agent refused or reported a failure (detail says why)
+        - clarification_not_pending  # 409: already answered, expired or cancelled
+        - approval_already_decided  # 409
+        - limit_reached           # 429: the user's daily limit for this model or agent
+        - rate_limited            # 429: too many requests to the hub
+        - hub_error               # 500
+
+    HubInfo:
+      type: object
+      required: [name, hub_version, api_version, setup_required]
+      properties:
+        name: { type: string, description: 'The hub''s name (shown before sign-in), e.g. "Home" or "Acme Ops"' }
+        hub_version: { type: string }
+        api_version: { type: string, example: "1.0" }
+        setup_required: { type: boolean, description: 'No owner yet — the app shows owner pairing' }
+        public_url_mode: { type: boolean }
+
+    PasskeyCeremony:
+      type: object
+      required: [ceremony_id, options]
+      properties:
+        ceremony_id: { type: string }
+        options:
+          type: object
+          description: WebAuthn PublicKeyCredentialCreationOptions / RequestOptions (JSON form)
+
+    PasskeyResult:
+      type: object
+      required: [ceremony_id, credential]
+      properties:
+        ceremony_id: { type: string }
+        credential: { type: object, description: 'The WebAuthn credential (JSON form)' }
+        device_name: { type: string, maxLength: 60 }
+        platform: { type: string, enum: [ios, android], description: 'Shown in the device list (0.2.0)' }
+
+    Tokens:
+      type: object
+      required: [access_token, refresh_token, expires_in]
+      properties:
+        access_token: { type: string }
+        refresh_token: { type: string }
+        expires_in: { type: integer, description: 'Seconds until the access token expires' }
+
+    Session:
+      description: Sign-in result (an auth session — not a chat session)
+      allOf:
+        - { $ref: "#/components/schemas/Tokens" }
+        - type: object
+          required: [me]
+          properties:
+            me: { $ref: "#/components/schemas/Me" }
+
+    Role:
+      type: string
+      enum: [owner, admin, member, restricted]
+
+    Me:
+      type: object
+      required: [user_id, display_name, role, hub, permissions]
+      properties:
+        user_id: { type: string }
+        display_name: { type: string }
+        role: { $ref: "#/components/schemas/Role" }
+        hub: { type: object, required: [id, name], description: 'The group this hub serves', properties: { id: { type: string }, name: { type: string } } }
+        permissions:
+          type: object
+          description: What the UI may show (role-aware UI hides the rest)
+          properties:
+            manage_members: { type: boolean }
+            manage_agents: { type: boolean }
+            view_activity: { type: boolean }
+            approve: { type: boolean }
+
+    Member:
+      type: object
+      required: [user_id, display_name, role]
+      properties:
+        user_id: { type: string }
+        display_name: { type: string }
+        role: { $ref: "#/components/schemas/Role" }
+        last_active_at: { type: [string, "null"], format: date-time }
+        joined_at: { type: string, format: date-time }
+
+    Invite:
+      type: object
+      required: [id, role, expires_at, created_by]
+      properties:
+        id: { type: string }
+        role: { $ref: "#/components/schemas/Role" }
+        note: { type: string }
+        created_by: { type: string }
+        expires_at: { type: string, format: date-time }
+
+    InviteCreated:
+      allOf:
+        - { $ref: "#/components/schemas/Invite" }
+        - type: object
+          required: [code, url]
+          properties:
+            code: { type: string, description: 'Shown once; the hub stores only a hash' }
+            url:
+              type: string
+              format: uri
+              description: |
+                Universal link / app link that opens the app:
+                `https://switchboard.applabs.llc/join#hub=<hub URL, encoded>&code=<code>`. The code travels in
+                the fragment, so it never reaches a web server or its logs.
+
+    InvitePreview:
+      type: object
+      required: [hub_name, invited_by, role, expires_at]
+      properties:
+        hub_name: { type: string }
+        invited_by: { type: string }
+        role: { $ref: "#/components/schemas/Role" }
+        expires_at: { type: string, format: date-time }
+
+    Device:
+      type: object
+      required: [id, platform, name]
+      properties:
+        id: { type: string }
+        platform: { type: string, enum: [ios, android, other], description: 'Open enum; other = signed in before 0.2.0 or from a test token' }
+        name: { type: string }
+        last_used_at: { type: string, format: date-time }
+        this_device: { type: boolean }
+        push_enabled: { type: boolean, description: 'This device receives push notices' }
+        notify_prefs: { $ref: "#/components/schemas/NotifyPrefs" }
+
+    NotifyPrefs:
+      type: object
+      description: |
+        Per notification kind on/off; missing = on. Kinds: approval_needed, question_asked, run_finished
+        (runs of 20 s or more, or failed), job_failed, member_joined, task_needs_you, task_review (0.4.0). Notices go through the AppLabs push relay
+        and carry no content (kind + opaque ids); the app fetches details from the hub.
+      additionalProperties: { type: boolean }
+      example: { approval_needed: true, job_failed: true, job_finished: false, shared_session_message: false }
+
+    AgentType:
+      type: string
+      description: Open enum (v2 adds openclaw, openai_compatible).
+      enum: [hermes, openclaw, openai_compatible]
+
+    AgentStatus:
+      type: string
+      description: Open enum — unknown values are shown as offline.
+      enum: [online, busy, offline, key_rejected, unknown]
+
+    Capabilities:
+      type: object
+      description: |
+        What the agent's adapter supports — the app shows only these features. Derived by the hub
+        from the agent (for Hermes: GET /v1/capabilities).
+      required: [chat, streaming]
+      properties:
+        chat: { type: boolean }
+        streaming: { type: boolean }
+        stop: { type: boolean }
+        tool_events: { type: boolean }
+        approvals: { type: boolean }
+        jobs: { type: boolean }
+        model_switching: { type: boolean, description: 'Each conversation can use any granted model (Hermes 0.22: the run''s model and provider)' }
+        per_user_memory: { type: boolean }
+        images: { type: boolean }
+        clarify: { type: boolean, description: 'The agent can pause to ask the user a question (answerClarification). 0.2.0' }
+        steer: { type: boolean, description: 'Guidance can be added to a running run (steerRun). 0.2.0' }
+        reasoning: { type: boolean, description: 'The agent can stream its reasoning (shown only when the user enables it). 0.2.0' }
+
+    Agent:
+      type: object
+      required: [id, type, name, status, capabilities, my_permissions]
+      properties:
+        id: { type: string }
+        type: { $ref: "#/components/schemas/AgentType" }
+        name: { type: string }
+        status: { $ref: "#/components/schemas/AgentStatus" }
+        last_seen_at: { type: [string, "null"], format: date-time }
+        activity: { type: [string, "null"], description: 'One line of current activity, e.g. "Running web_search"' }
+        host: { type: [string, "null"], description: 'Display host (never a key)' }
+        current_model: { type: [string, "null"], description: 'Label of the default model for me' }
+        active_runs: { type: integer }
+        job_count: { type: [integer, "null"] }
+        capabilities: { $ref: "#/components/schemas/Capabilities" }
+        my_permissions:
+          type: object
+          required: [chat]
+          properties:
+            chat: { type: boolean }
+            manage_jobs: { type: boolean }
+            manage_agent: { type: boolean }
+        about: { type: string, description: 'What it''s good at (0.4.0; owner/admin set it)' }
+        tags: { type: array, items: { type: string }, description: 'e.g. research, code (0.4.0)' }
+        cost_level: { type: [string, "null"], enum: [low, medium, high, null] }
+        coordinator: { type: boolean, description: 'The hub''s coordinator (at most one; the owner sets it)' }
+        base_url: { type: string, description: 'Owner only' }
+        profiles:
+          type: array
+          description: Owner only — keys are never returned
+          items: { $ref: "#/components/schemas/ProfileOut" }
+
+    ProfileOut:
+      type: object
+      required: [id, name, key_set]
+      properties:
+        id: { type: string }
+        name: { type: string, example: safe }
+        port: { type: [integer, "null"] }
+        key_set: { type: boolean }
+        key_last4: { type: [string, "null"] }
+        toolset_summary: { type: string, example: "No terminal or file write" }
+
+    AgentInput:
+      type: object
+      required: [type, name, base_url, profiles]
+      properties:
+        type: { $ref: "#/components/schemas/AgentType" }
+        name: { type: string, minLength: 1, maxLength: 40 }
+        base_url: { type: string, format: uri, description: "e.g. http://mini-1.tailnet:8642 (one profile) — per-profile ports below" }
+        profiles:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [name, api_key]
+            properties:
+              name: { type: string }
+              port: { type: integer, description: 'Overrides the base URL''s port for this profile' }
+              api_key: { type: string, writeOnly: true, minLength: 16 }
+              toolset_summary: { type: string }
+
+    AgentPatch:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 40 }
+        base_url: { type: string, format: uri }
+        profiles:
+          type: array
+          items:
+            type: object
+            required: [name]
+            properties:
+              id: { type: string, description: 'Existing profile; omit to add' }
+              name: { type: string }
+              port: { type: integer }
+              api_key: { type: string, writeOnly: true, minLength: 16, description: 'Omit to keep the stored key' }
+              toolset_summary: { type: string }
+              remove: { type: boolean }
+        about: { type: string, maxLength: 300, description: 'Specialty (0.4.0): owner or admin; no connection test' }
+        tags: { type: array, maxItems: 8, items: { type: string, pattern: '^[a-z0-9-]{1,20}$' }, description: 'Lower-cased by the hub' }
+        cost_level: { type: string, enum: [low, medium, high, ""], description: 'Empty clears it' }
+        coordinator: { type: boolean, description: 'Owner only: make this the hub''s coordinator (clears any other)' }
+
+    ConnectionTest:
+      type: object
+      required: [ok, checks]
+      properties:
+        ok: { type: boolean }
+        checks:
+          type: array
+          items:
+            type: object
+            required: [name, ok]
+            properties:
+              name: { type: string, enum: [reachable, auth, capabilities, runs, model], description: 'Open enum' }
+              ok: { type: boolean }
+              profile: { type: string }
+              detail: { type: string, description: 'The reason, phrased for the owner' }
+        capabilities: { $ref: "#/components/schemas/Capabilities" }
+
+    ConnectionTestProblem:
+      allOf:
+        - { $ref: "#/components/schemas/Problem" }
+        - type: object
+          properties:
+            test: { $ref: "#/components/schemas/ConnectionTest" }
+
+    Model:
+      type: object
+      required: [id, label, is_paid]
+      properties:
+        id: { type: string }
+        label: { type: string, example: "Claude (full tools)" }
+        is_paid: { type: boolean }
+        is_local: { type: boolean }
+        daily_limit: { type: [integer, "null"] }
+        used_today: { type: [integer, "null"] }
+        is_default: { type: boolean }
+
+    AgentGrants:
+      type: object
+      required: [grants]
+      properties:
+        grants:
+          type: array
+          description: Per role (or per user) — deny by default
+          items:
+            type: object
+            required: [can_chat]
+            properties:
+              role: { $ref: "#/components/schemas/Role" }
+              user_id: { type: string, description: 'Instead of role, for one person' }
+              profile_id: { type: string, description: 'The agent profile (tool level) this role is routed to' }
+              can_chat: { type: boolean }
+              can_manage_jobs: { type: boolean }
+              daily_run_limit: { type: [integer, "null"] }
+              models:
+                type: array
+                items:
+                  type: object
+                  required: [model_id]
+                  properties:
+                    model_id: { type: string }
+                    daily_limit: { type: [integer, "null"] }
+
+    ShareTarget:
+      type: object
+      description: Who else sees a session (v1). Shared sessions run on the most restrictive participant's profile and models.
+      properties:
+        everyone: { type: boolean, description: 'Every member who may use the agent' }
+        user_ids: { type: array, items: { type: string } }
+
+    ChatSession:
+      type: object
+      required: [id, agent_id, title, owner_user_id, created_at, updated_at]
+      properties:
+        id: { type: string }
+        agent_id: { type: string }
+        title: { type: string }
+        owner_user_id: { type: string }
+        model_id: { type: [string, "null"] }
+        model_label: { type: [string, "null"] }
+        shared_with: { $ref: "#/components/schemas/ShareTarget" }
+        last_message_preview: { type: [string, "null"], maxLength: 200 }
+        active_run_id: { type: [string, "null"] }
+        usage:
+          type: [object, "null"]
+          description: 'Totals for this conversation, from the agent''s reports (0.2.0)'
+          properties:
+            input_tokens: { type: integer }
+            output_tokens: { type: integer }
+            estimated_cost_usd: { type: [number, "null"] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    Message:
+      type: object
+      required: [id, role, created_at]
+      properties:
+        id: { type: string }
+        role: { type: string, enum: [user, assistant] }
+        kind:
+          type: string
+          enum: [message, steer, clarification_answer]
+          default: message
+          description: 'User messages: a normal message, guidance added mid-run, or an answer to the agent''s question. Open enum (0.2.0)'
+        clarifications:
+          type: array
+          description: 'Assistant messages: questions the agent asked during this run, with their answers (0.2.0)'
+          items: { $ref: "#/components/schemas/Clarification" }
+        author_user_id: { type: [string, "null"], description: 'For user messages (shared sessions name the speaker)' }
+        text: { type: string, description: 'Markdown for assistant messages; rendered as text, never executed' }
+        images: { type: array, items: { type: string, description: 'Hub URL of an attached image' } }
+        run_id: { type: [string, "null"] }
+        status: { type: string, enum: [complete, partial, failed, cancelled], description: 'Assistant messages; open enum' }
+        tool_calls: { type: array, items: { $ref: "#/components/schemas/ToolCall" } }
+        model_label: { type: [string, "null"] }
+        created_at: { type: string, format: date-time }
+
+    ToolCall:
+      type: object
+      required: [id, tool, state]
+      properties:
+        id: { type: string }
+        tool: { type: string, example: terminal }
+        preview: { type: [string, "null"], description: 'Short detail, e.g. the command' }
+        state: { type: string, enum: [running, done, error], description: 'Open enum' }
+        duration_s: { type: [number, "null"] }
+        output_excerpt: { type: [string, "null"], maxLength: 4096 }
+
+    RunInput:
+      type: object
+      required: [text]
+      properties:
+        text: { type: string, minLength: 1, maxLength: 100000 }
+        images:
+          type: array
+          maxItems: 4
+          items: { type: string, description: "data:image/...;base64 URL (only when capabilities.images)" }
+        model_id: { type: string, description: 'Overrides the session''s model for this turn (must be granted)' }
+
+    RunStatus:
+      type: string
+      description: Open enum.
+      enum: [queued, running, waiting_for_approval, waiting_for_input, stopping, completed, failed, cancelled, interrupted]
+
+    Run:
+      type: object
+      required: [id, session_id, agent_id, status, created_at]
+      properties:
+        id: { type: string }
+        session_id: { type: string }
+        agent_id: { type: string }
+        status: { $ref: "#/components/schemas/RunStatus" }
+        model_label: { type: [string, "null"] }
+        message_id: { type: [string, "null"], description: 'The assistant message this run writes' }
+        output: { type: [string, "null"], description: 'Final text when completed' }
+        error: { type: [string, "null"] }
+        usage: { type: [object, "null"] }
+        last_event_id: { type: [string, "null"], description: 'Resume the stream from here' }
+        created_at: { type: string, format: date-time }
+        finished_at: { type: [string, "null"], format: date-time }
+
+    Clarification:
+      type: object
+      required: [id, question, multi_select, status]
+      properties:
+        id: { type: string }
+        question: { type: string }
+        choices: { type: array, items: { type: string }, description: 'Empty: free-text answer' }
+        multi_select: { type: boolean }
+        status: { type: string, enum: [pending, answered, timed_out, cancelled], description: 'Open enum' }
+        answer:
+          oneOf:
+            - { type: string }
+            - { type: array, items: { type: string } }
+            - { type: "null" }
+        answered_by: { type: [string, "null"] }
+        expires_at: { type: [string, "null"], format: date-time }
+
+    ApprovalDecision:
+      type: string
+      description: |
+        approve_once — this command only; approve_session — matching commands for the rest of this
+        session; approve_always — permanently on the agent, for every user (owner only); deny.
+      enum: [approve_once, approve_session, approve_always, deny]
+
+    Approval:
+      type: object
+      required: [id, run_id, session_id, agent_id, requested_by, command, status, created_at, allowed_decisions]
+      properties:
+        id: { type: string }
+        run_id: { type: string }
+        session_id: { type: string }
+        agent_id: { type: string }
+        requested_by: { type: string, description: 'user_id whose run asked' }
+        command: { type: string, description: 'The exact command shown before deciding' }
+        description: { type: [string, "null"] }
+        status: { type: string, enum: [pending, approved, denied, expired], description: 'Open enum' }
+        allowed_decisions: { type: array, items: { $ref: "#/components/schemas/ApprovalDecision" }, description: 'For the current user' }
+        decision: { $ref: "#/components/schemas/ApprovalDecision" }
+        decided_by: { type: [string, "null"] }
+        decided_at: { type: [string, "null"], format: date-time }
+        created_at: { type: string, format: date-time }
+
+    Job:
+      type: object
+      required: [id, agent_id, name, schedule, state]
+      properties:
+        id: { type: string }
+        agent_id: { type: string }
+        name: { type: string }
+        prompt: { type: string }
+        schedule: { type: string, description: 'As the agent understands it (Hermes cron syntax), e.g. "every 6h" or "0 9 * * *"' }
+        state: { type: string, enum: [active, paused, running, failed], description: 'Open enum' }
+        repeat: { type: [integer, "null"] }
+        last_run_at: { type: [string, "null"], format: date-time }
+        last_result: { type: [string, "null"], enum: [success, failure, null] }
+        next_run_at: { type: [string, "null"], format: date-time }
+        recent_runs:
+          type: array
+          items:
+            type: object
+            properties:
+              at: { type: string, format: date-time }
+              result: { type: string, enum: [success, failure] }
+              summary: { type: [string, "null"] }
+
+    JobInput:
+      type: object
+      required: [name, schedule, prompt]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        schedule: { type: string }
+        prompt: { type: string, minLength: 1 }
+        repeat: { type: integer, minimum: 1 }
+
+    JobPatch:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        schedule: { type: string }
+        prompt: { type: string, minLength: 1 }
+        repeat: { type: [integer, "null"], minimum: 1 }
+
+    Activity:
+      type: object
+      required: [id, at, action]
+      properties:
+        id: { type: string }
+        at: { type: string, format: date-time }
+        user_id: { type: [string, "null"] }
+        agent_id: { type: [string, "null"] }
+        model_label: { type: [string, "null"] }
+        action:
+          type: string
+          description: Open enum
+          enum: [run_started, approval_decided, member_joined, member_removed, role_changed, grants_changed,
+                 agent_added, agent_changed, agent_removed, job_changed, invite_created, device_revoked,
+                 agent_described, task_created, task_reviewed, task_deleted,
+                 forge_bridge_created, forge_bridge_revoked, forge_ticket_started, forge_decided]
+        detail: { type: object, description: 'Metadata only — never message content' }
+
+    QuickCommand:
+      type: object
+      required: [id, label, prompt, scope]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        prompt: { type: string }
+        agent_id: { type: [string, "null"], description: 'null = ask which agent' }
+        scope: { type: string, enum: [personal, everyone] }
+
+    QuickCommandInput:
+      type: object
+      required: [label, prompt, scope]
+      properties:
+        label: { type: string, minLength: 1, maxLength: 40 }
+        prompt: { type: string, minLength: 1 }
+        agent_id: { type: [string, "null"] }
+        scope: { type: string, enum: [personal, everyone], description: 'everyone needs owner/admin' }
+
+    TaskColumn:
+      type: string
+      enum: [backlog, ready, working, needs_you, review, done]
+
+    TaskStepInput:
+      type: object
+      description: Exactly one of agent_id or tag ("any agent tagged X", resolved when the step starts)
+      properties:
+        agent_id: { type: string }
+        tag: { type: string, pattern: '^[a-z0-9-]{1,20}$' }
+        model_id: { type: string }
+
+    TaskStep:
+      type: object
+      required: [id, position, status]
+      properties:
+        id: { type: string }
+        position: { type: integer, description: '0-based' }
+        kind: { type: string, enum: [work, plan, combine], description: 'plan / combine: the coordinator''s steps' }
+        agent_id: { type: [string, "null"] }
+        tag: { type: [string, "null"] }
+        model_id: { type: [string, "null"] }
+        status: { type: string, enum: [pending, running, done, failed] }
+        session_id: { type: [string, "null"], description: 'The step''s conversation (open it to steer, answer or approve)' }
+        run_id: { type: [string, "null"] }
+        ran_on_agent_id: { type: [string, "null"] }
+        result: { type: [string, "null"], description: 'The step''s final answer' }
+        note: { type: [string, "null"], description: 'The reviewer''s note when sent back' }
+        started_at: { type: [string, "null"], format: date-time }
+        finished_at: { type: [string, "null"], format: date-time }
+
+    Task:
+      type: object
+      required: [id, title, instructions, column, source, created_by, created_by_name, review_each_step, steps, runs_used, send_backs, limits, position, created_at, updated_at]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        instructions: { type: string }
+        column: { $ref: "#/components/schemas/TaskColumn" }
+        reason:
+          type: [string, "null"]
+          description: 'Why it needs someone (open enum): approval, question, failed, stopped, unavailable, limit_runs, limit_time, plan (approve the coordinator''s plan), plan_invalid'
+        reason_detail: { type: [string, "null"] }
+        outcome: { type: [string, "null"], enum: [accepted, not_used, null] }
+        source: { type: string, description: 'switchboard, or forge for FORGE tickets (later in M5)' }
+        source_ref: { type: [string, "null"] }
+        created_by: { type: string }
+        created_by_name: { type: string }
+        due: { type: [string, "null"] }
+        review_each_step: { type: boolean }
+        steps: { type: array, items: { $ref: "#/components/schemas/TaskStep" } }
+        runs_used: { type: integer }
+        send_backs: { type: integer }
+        limits:
+          type: object
+          required: [max_steps, max_runs, max_send_backs, max_minutes]
+          properties:
+            max_steps: { type: integer, example: 6 }
+            max_runs: { type: integer, example: 12 }
+            max_send_backs: { type: integer, example: 3 }
+            max_minutes: { type: integer, example: 120 }
+        position: { type: number }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        parent_id: { type: [string, "null"], description: 'The coordinated card this sub-card belongs to (reviewed with it)' }
+        coordinated: { type: boolean }
+        plan:
+          type: [array, "null"]
+          description: The coordinator's proposed sub-cards (reason plan), kept once approved
+          items: { $ref: "#/components/schemas/PlanItem" }
+        children: { type: array, items: { type: string }, description: 'Sub-card ids, after the plan is approved' }
+
+    PlanItem:
+      type: object
+      required: [title, agent_id]
+      properties:
+        title: { type: string }
+        instructions: { type: string }
+        agent_id: { type: string }
+
+    TaskInput:
+      type: object
+      required: [title, steps]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 120 }
+        instructions: { type: string, maxLength: 20000 }
+        steps: { type: array, maxItems: 6, items: { $ref: "#/components/schemas/TaskStepInput" }, description: '1–6 steps; none for a coordinated card. Restricted members: one step' }
+        coordinated: { type: boolean, default: false, description: 'Give the card to the hub''s coordinator: it plans sub-cards (a person approves), then combines their results' }
+        due: { type: [string, "null"] }
+        review_each_step: { type: boolean, default: false }
+        column: { type: string, enum: [backlog, ready], default: backlog }
+
+    TaskPatch:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 120 }
+        instructions: { type: string, maxLength: 20000 }
+        steps: { type: array, minItems: 1, maxItems: 6, items: { $ref: "#/components/schemas/TaskStepInput" } }
+        due: { type: [string, "null"] }
+        review_each_step: { type: boolean }
+
+    ForgeBridge:
+      type: object
+      required: [id, name, connected, created_at]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        connected: { type: boolean, description: 'Polled within the last ~45 s' }
+        paired: { type: boolean, description: 'FORGE has used the one-time code' }
+        last_seen_at: { type: [string, "null"], format: date-time }
+        created_at: { type: string, format: date-time }
+
+    ForgeCard:
+      type: object
+      required: [id, project, key, title, status, column]
+      properties:
+        id: { type: string, example: "forge:Gameplay:T-005" }
+        project: { type: string }
+        key: { type: string, example: T-005 }
+        title: { type: string }
+        status: { type: string, description: "FORGE's ticket status: draft, todo, in_progress, in_review, done" }
+        column: { $ref: "#/components/schemas/TaskColumn" }
+        milestone: { type: [string, "null"] }
+        grade: { type: [string, "null"], description: 'SpecGrader verdict' }
+        run_id: { type: [string, "null"] }
+        waiting_for: { type: [string, "null"], description: 'The gate its run waits at (column needs_you)' }
+        phase: { type: [string, "null"] }
+
+    ForgeBoard:
+      type: object
+      required: [connected]
+      properties:
+        connected: { type: boolean }
+        cards: { type: array, items: { $ref: "#/components/schemas/ForgeCard" } }
+        problem: { type: [string, "null"] }

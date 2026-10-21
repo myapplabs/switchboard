@@ -1,0 +1,114 @@
+[
+ {
+  "t": 0.137,
+  "line": ": open\n"
+ },
+ {
+  "t": 0.137,
+  "line": "\n"
+ },
+ {
+  "t": 3.061,
+  "line": "id: 0\n"
+ },
+ {
+  "t": 3.061,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_537534a99eb7494191f00c23eedf8f52\", \"timestamp\": 1792553536.4452155, \"delta\": \"You asked me\", \"seq\": 0}\n"
+ },
+ {
+  "t": 3.061,
+  "line": "\n"
+ },
+ {
+  "t": 3.325,
+  "line": "id: 1\n"
+ },
+ {
+  "t": 3.325,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_537534a99eb7494191f00c23eedf8f52\", \"timestamp\": 1792553536.7094295, \"delta\": \" to run the `\", \"seq\": 1}\n"
+ },
+ {
+  "t": 3.325,
+  "line": "\n"
+ },
+ {
+  "t": 3.333,
+  "line": "id: 2\n"
+ },
+ {
+  "t": 3.333,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_537534a99eb7494191f00c23eedf8f52\", \"timestamp\": 1792553536.717296, \"delta\": \"date` command and\", \"seq\": 2}\n"
+ },
+ {
+  "t": 3.333,
+  "line": "\n"
+ },
+ {
+  "t": 3.449,
+  "line": "id: 3\n"
+ },
+ {
+  "t": 3.449,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_537534a99eb7494191f00c23eedf8f52\", \"timestamp\": 1792553536.8337083, \"delta\": \" tell\", \"seq\": 3}\n"
+ },
+ {
+  "t": 3.449,
+  "line": "\n"
+ },
+ {
+  "t": 3.474,
+  "line": "id: 4\n"
+ },
+ {
+  "t": 3.474,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_537534a99eb7494191f00c23eedf8f52\", \"timestamp\": 1792553536.8583868, \"delta\": \" you the current time\", \"seq\": 4}\n"
+ },
+ {
+  "t": 3.474,
+  "line": "\n"
+ },
+ {
+  "t": 3.536,
+  "line": "id: 5\n"
+ },
+ {
+  "t": 3.536,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_537534a99eb7494191f00c23eedf8f52\", \"timestamp\": 1792553536.9160829, \"delta\": \" in one short sentence\", \"seq\": 5}\n"
+ },
+ {
+  "t": 3.536,
+  "line": "\n"
+ },
+ {
+  "t": 3.538,
+  "line": "id: 6\n"
+ },
+ {
+  "t": 3.538,
+  "line": "data: {\"event\": \"message.delta\", \"run_id\": \"run_537534a99eb7494191f00c23eedf8f52\", \"timestamp\": 1792553536.9176898, \"delta\": \".\", \"seq\": 6}\n"
+ },
+ {
+  "t": 3.538,
+  "line": "\n"
+ },
+ {
+  "t": 4.695,
+  "line": "id: 7\n"
+ },
+ {
+  "t": 4.695,
+  "line": "data: {\"event\": \"run.completed\", \"run_id\": \"run_537534a99eb7494191f00c23eedf8f52\", \"timestamp\": 1792553538.079418, \"output\": \"You asked me to run the `date` command and tell you the current time in one short sentence.\", \"usage\": {\"input_tokens\": 15328, \"output_tokens\": 50, \"total_tokens\": 15378}, \"runtime\": {\"provider\": \"\", \"model\": \"\", \"route_source\": \"global\"}, \"completed\": true, \"partial\": false, \"interrupted\": false, \"seq\": 7}\n"
+ },
+ {
+  "t": 4.695,
+  "line": "\n"
+ },
+ {
+  "t": 4.695,
+  "line": ": stream closed\n"
+ },
+ {
+  "t": 4.695,
+  "line": "\n"
+ }
+]

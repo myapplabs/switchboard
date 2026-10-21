@@ -1,0 +1,51 @@
+{
+  "items": [
+    {
+      "id": "agt_mini_ops",
+      "type": "hermes",
+      "name": "mini-ops",
+      "status": "online",
+      "last_seen_at": "2026-10-20T19:02:11Z",
+      "activity": null,
+      "host": "mini-ops",
+      "current_model": "Local (safe)",
+      "active_runs": 0,
+      "job_count": 3,
+      "capabilities": {
+        "chat": true,
+        "streaming": true,
+        "stop": true,
+        "tool_events": true,
+        "approvals": true,
+        "jobs": true,
+        "model_switching": true,
+        "per_user_memory": true,
+        "images": true
+      },
+      "my_permissions": {
+        "chat": true,
+        "manage_jobs": true,
+        "manage_agent": false
+      }
+    },
+    {
+      "id": "agt_mini_2",
+      "type": "hermes",
+      "name": "mini-2",
+      "status": "offline",
+      "last_seen_at": "2026-10-20T18:51:00Z",
+      "activity": null,
+      "host": "mini-2",
+      "current_model": null,
+      "active_runs": 0,
+      "job_count": null,
+      "capabilities": {
+        "chat": true,
+        "streaming": true
+      },
+      "my_permissions": {
+        "chat": true
+      }
+    }
+  ]
+}

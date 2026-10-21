@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Switchboard app icon (concept 2, dark): the switchboard grid with the amber route to the green connection. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="1536" android:viewportHeight="1536">
+    <group android:translateX="256" android:translateY="256">
+        <path android:pathData="M350,350 L512,512 M512,350 L512,512 M350,512 L512,512" android:strokeColor="#444B56" android:strokeWidth="34" android:strokeLineCap="round" android:strokeLineJoin="round" android:fillColor="#00000000"/>
+        <path android:pathData="M512,512 L512,555 Q512,674 630,674 L674,674" android:strokeColor="#F5A524" android:strokeWidth="38" android:strokeLineCap="round" android:strokeLineJoin="round" android:fillColor="#00000000"/>
+        <path android:pathData="M350,350 L512,512" android:strokeColor="#F5A524" android:strokeWidth="38" android:strokeLineCap="round" android:strokeLineJoin="round" android:fillColor="#00000000"/>
+        <path android:pathData="M296,350 a54,54 0 1,0 108,0 a54,54 0 1,0 -108,0 Z" android:fillColor="#F5A524"/>
+        <path android:pathData="M458,350 a54,54 0 1,0 108,0 a54,54 0 1,0 -108,0 Z" android:fillColor="#444B56"/>
+        <path android:pathData="M620,350 a54,54 0 1,0 108,0 a54,54 0 1,0 -108,0 Z" android:fillColor="#444B56"/>
+        <path android:pathData="M296,512 a54,54 0 1,0 108,0 a54,54 0 1,0 -108,0 Z" android:fillColor="#444B56"/>
+        <path android:pathData="M458,512 a54,54 0 1,0 108,0 a54,54 0 1,0 -108,0 Z" android:fillColor="#F5A524"/>
+        <path android:pathData="M620,512 a54,54 0 1,0 108,0 a54,54 0 1,0 -108,0 Z" android:fillColor="#444B56"/>
+        <path android:pathData="M296,674 a54,54 0 1,0 108,0 a54,54 0 1,0 -108,0 Z" android:fillColor="#444B56"/>
+        <path android:pathData="M458,674 a54,54 0 1,0 108,0 a54,54 0 1,0 -108,0 Z" android:fillColor="#444B56"/>
+        <path android:pathData="M620,674 a54,54 0 1,0 108,0 a54,54 0 1,0 -108,0 Z" android:fillColor="#3DD68C"/>
+    </group>
+</vector>

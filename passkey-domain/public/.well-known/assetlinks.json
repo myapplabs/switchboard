@@ -1,0 +1,15 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "llc.applabs.switchboard",
+      "sha256_cert_fingerprints": [
+        "2D:22:18:66:6E:06:A7:00:D5:14:DF:5E:51:71:4E:85:B3:CA:48:D1:43:4C:81:A9:9D:56:A9:7A:29:03:D2:63"
+      ]
+    }
+  }
+]

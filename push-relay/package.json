@@ -1,0 +1,15 @@
+{
+  "name": "switchboard-push-relay",
+  "private": true,
+  "version": "1.0.0",
+  "author": "AppLabs",
+  "description": "Delivers content-free push notices from self-hosted Switchboard hubs to the Switchboard apps (FCM).",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "license": "Apache-2.0"
+}

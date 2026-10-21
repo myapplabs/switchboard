@@ -1,0 +1,22 @@
+{
+  "webcredentials": {
+    "apps": [
+      "REPLACE_WITH_TEAM_ID.llc.applabs.switchboard"
+    ]
+  },
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "REPLACE_WITH_TEAM_ID.llc.applabs.switchboard"
+        ],
+        "components": [
+          {
+            "/": "/join",
+            "comment": "Household invites: /join#hub=\u2026&code=\u2026"
+          }
+        ]
+      }
+    ]
+  }
+}

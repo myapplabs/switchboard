@@ -1,0 +1,8 @@
+# gitleaks: the default rules, plus what is known not to be a secret here.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Migration file names, test code (fake keys only), and google-services.json (Firebase app config, public by design)"
+regexes = ['''V\d{3}__[a-z_]+\.sql''']
+paths = ['''(hub|app/shared/[a-z]+)/src/test/''', '''app/shared/[a-z]+/src/commonTest/''', '''push-relay/test/''', '''app/androidApp/google-services\.json''']

@@ -1,0 +1,4 @@
+{
+  "projects": { "default": "applabs-switchboard" },
+  "targets": { "applabs-switchboard": { "hosting": { "switchboard": ["applabs-switchboard"] } } }
+}

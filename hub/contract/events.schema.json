@@ -1,0 +1,1066 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hermescontrol.dev/schemas/events.schema.json",
+  "title": "Switchboard hub events",
+  "description": "SSE payloads (the data: line) of GET /v1/runs/{run_id}/events and GET /v1/me/events. See events.md. Clients must ignore unknown types and fields; this schema is closed per type so producers stay exact.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/RunEvent"
+    },
+    {
+      "$ref": "#/$defs/UserEvent"
+    }
+  ],
+  "$defs": {
+    "base": {
+      "type": "object",
+      "required": [
+        "type",
+        "seq",
+        "at"
+      ],
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "runBase": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        }
+      ],
+      "required": [
+        "run_id"
+      ],
+      "properties": {
+        "run_id": {
+          "type": "string"
+        }
+      }
+    },
+    "decision": {
+      "enum": [
+        "approve_once",
+        "approve_session",
+        "approve_always",
+        "deny"
+      ]
+    },
+    "agentStatus": {
+      "type": "string",
+      "description": "online | busy | offline | key_rejected | unknown (open)"
+    },
+    "RunEvent": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/run.started"
+        },
+        {
+          "$ref": "#/$defs/message.delta"
+        },
+        {
+          "$ref": "#/$defs/tool.started"
+        },
+        {
+          "$ref": "#/$defs/tool.completed"
+        },
+        {
+          "$ref": "#/$defs/reasoning"
+        },
+        {
+          "$ref": "#/$defs/run.approval.requested"
+        },
+        {
+          "$ref": "#/$defs/run.approval.decided"
+        },
+        {
+          "$ref": "#/$defs/run.status"
+        },
+        {
+          "$ref": "#/$defs/run.completed"
+        },
+        {
+          "$ref": "#/$defs/run.failed"
+        },
+        {
+          "$ref": "#/$defs/run.cancelled"
+        },
+        {
+          "$ref": "#/$defs/run.clarify.requested"
+        },
+        {
+          "$ref": "#/$defs/run.clarify.answered"
+        },
+        {
+          "$ref": "#/$defs/steer.accepted"
+        }
+      ]
+    },
+    "run.started": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/runBase"
+        }
+      ],
+      "required": [
+        "session_id",
+        "agent_id",
+        "message_id"
+      ],
+      "properties": {
+        "type": {
+          "const": "run.started"
+        },
+        "run_id": true,
+        "seq": true,
+        "at": true,
+        "session_id": {
+          "type": "string"
+        },
+        "agent_id": {
+          "type": "string"
+        },
+        "model_label": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "message_id": {
+          "type": "string"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "message.delta": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/runBase"
+        }
+      ],
+      "required": [
+        "delta"
+      ],
+      "properties": {
+        "type": {
+          "const": "message.delta"
+        },
+        "run_id": true,
+        "seq": true,
+        "at": true,
+        "delta": {
+          "type": "string"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "tool.started": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/runBase"
+        }
+      ],
+      "required": [
+        "tool_call_id",
+        "tool"
+      ],
+      "properties": {
+        "type": {
+          "const": "tool.started"
+        },
+        "run_id": true,
+        "seq": true,
+        "at": true,
+        "tool_call_id": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "preview": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "tool.completed": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/runBase"
+        }
+      ],
+      "required": [
+        "tool_call_id",
+        "tool",
+        "state"
+      ],
+      "properties": {
+        "type": {
+          "const": "tool.completed"
+        },
+        "run_id": true,
+        "seq": true,
+        "at": true,
+        "tool_call_id": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string",
+          "description": "done | error (open)"
+        },
+        "duration_s": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "output_excerpt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 4096
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "reasoning": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/runBase"
+        }
+      ],
+      "required": [
+        "text"
+      ],
+      "properties": {
+        "type": {
+          "const": "reasoning"
+        },
+        "run_id": true,
+        "seq": true,
+        "at": true,
+        "text": {
+          "type": "string"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "run.approval.requested": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/runBase"
+        }
+      ],
+      "required": [
+        "approval_id",
+        "command",
+        "allowed_decisions",
+        "can_decide"
+      ],
+      "properties": {
+        "type": {
+          "const": "approval.requested"
+        },
+        "run_id": true,
+        "seq": true,
+        "at": true,
+        "approval_id": {
+          "type": "string"
+        },
+        "command": {
+          "type": "string"
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "allowed_decisions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/decision"
+          }
+        },
+        "can_decide": {
+          "type": "boolean"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "run.approval.decided": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/runBase"
+        }
+      ],
+      "required": [
+        "approval_id",
+        "decision",
+        "decided_by"
+      ],
+      "properties": {
+        "type": {
+          "const": "approval.decided"
+        },
+        "run_id": true,
+        "seq": true,
+        "at": true,
+        "approval_id": {
+          "type": "string"
+        },
+        "decision": {
+          "$ref": "#/$defs/decision"
+        },
+        "decided_by": {
+          "type": "string"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "run.status": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/runBase"
+        }
+      ],
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "type": {
+          "const": "run.status"
+        },
+        "run_id": true,
+        "seq": true,
+        "at": true,
+        "status": {
+          "type": "string",
+          "description": "queued | running | waiting_for_approval | waiting_for_input | stopping (open)"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "run.completed": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/runBase"
+        }
+      ],
+      "required": [
+        "output"
+      ],
+      "properties": {
+        "type": {
+          "const": "run.completed"
+        },
+        "run_id": true,
+        "seq": true,
+        "at": true,
+        "output": {
+          "type": "string"
+        },
+        "usage": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "run.failed": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/runBase"
+        }
+      ],
+      "required": [
+        "error",
+        "code"
+      ],
+      "properties": {
+        "type": {
+          "const": "run.failed"
+        },
+        "run_id": true,
+        "seq": true,
+        "at": true,
+        "error": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "run.cancelled": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/runBase"
+        }
+      ],
+      "required": [
+        "by"
+      ],
+      "properties": {
+        "type": {
+          "const": "run.cancelled"
+        },
+        "run_id": true,
+        "seq": true,
+        "at": true,
+        "by": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "UserEvent": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/agent.status"
+        },
+        {
+          "$ref": "#/$defs/agent.changed"
+        },
+        {
+          "$ref": "#/$defs/agent.removed"
+        },
+        {
+          "$ref": "#/$defs/user.approval.requested"
+        },
+        {
+          "$ref": "#/$defs/user.approval.decided"
+        },
+        {
+          "$ref": "#/$defs/session.updated"
+        },
+        {
+          "$ref": "#/$defs/session.removed"
+        },
+        {
+          "$ref": "#/$defs/run.finished"
+        },
+        {
+          "$ref": "#/$defs/job.updated"
+        },
+        {
+          "$ref": "#/$defs/member.joined"
+        },
+        {
+          "$ref": "#/$defs/permissions.changed"
+        },
+        {
+          "$ref": "#/$defs/account.revoked"
+        },
+        {
+          "$ref": "#/$defs/resync"
+        },
+        {
+          "$ref": "#/$defs/task.changed"
+        },
+        {
+          "$ref": "#/$defs/task.removed"
+        },
+        {
+          "$ref": "#/$defs/user.clarify.requested"
+        }
+      ]
+    },
+    "agent.status": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        }
+      ],
+      "required": [
+        "agent_id",
+        "status"
+      ],
+      "properties": {
+        "type": {
+          "const": "agent.status"
+        },
+        "seq": true,
+        "at": true,
+        "agent_id": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/agentStatus"
+        },
+        "activity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "last_seen_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "active_runs": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "agent.changed": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        }
+      ],
+      "required": [
+        "agent_id"
+      ],
+      "properties": {
+        "type": {
+          "const": "agent.changed"
+        },
+        "seq": true,
+        "at": true,
+        "agent_id": {
+          "type": "string"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "agent.removed": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        }
+      ],
+      "required": [
+        "agent_id"
+      ],
+      "properties": {
+        "type": {
+          "const": "agent.removed"
+        },
+        "seq": true,
+        "at": true,
+        "agent_id": {
+          "type": "string"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "user.approval.requested": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        }
+      ],
+      "required": [
+        "approval_id",
+        "agent_id",
+        "session_id",
+        "run_id",
+        "requested_by",
+        "command"
+      ],
+      "properties": {
+        "type": {
+          "const": "approval.requested"
+        },
+        "seq": true,
+        "at": true,
+        "approval_id": {
+          "type": "string"
+        },
+        "agent_id": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "requested_by": {
+          "type": "string"
+        },
+        "command": {
+          "type": "string"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "user.approval.decided": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        }
+      ],
+      "required": [
+        "approval_id",
+        "decision",
+        "decided_by"
+      ],
+      "properties": {
+        "type": {
+          "const": "approval.decided"
+        },
+        "seq": true,
+        "at": true,
+        "approval_id": {
+          "type": "string"
+        },
+        "decision": {
+          "$ref": "#/$defs/decision"
+        },
+        "decided_by": {
+          "type": "string"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "session.updated": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        }
+      ],
+      "required": [
+        "session_id",
+        "agent_id",
+        "title"
+      ],
+      "properties": {
+        "type": {
+          "const": "session.updated"
+        },
+        "seq": true,
+        "at": true,
+        "session_id": {
+          "type": "string"
+        },
+        "agent_id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "last_message_preview": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        },
+        "active_run_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "session.removed": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        }
+      ],
+      "required": [
+        "session_id"
+      ],
+      "properties": {
+        "type": {
+          "const": "session.removed"
+        },
+        "seq": true,
+        "at": true,
+        "session_id": {
+          "type": "string"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "run.finished": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        }
+      ],
+      "required": [
+        "run_id",
+        "session_id",
+        "agent_id",
+        "status"
+      ],
+      "properties": {
+        "type": {
+          "const": "run.finished"
+        },
+        "seq": true,
+        "at": true,
+        "run_id": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "agent_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "description": "completed | failed | cancelled | interrupted (open)"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "job.updated": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        }
+      ],
+      "required": [
+        "agent_id",
+        "job_id",
+        "state"
+      ],
+      "properties": {
+        "type": {
+          "const": "job.updated"
+        },
+        "seq": true,
+        "at": true,
+        "agent_id": {
+          "type": "string"
+        },
+        "job_id": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "last_result": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "member.joined": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        }
+      ],
+      "required": [
+        "user_id",
+        "display_name",
+        "role"
+      ],
+      "properties": {
+        "type": {
+          "const": "member.joined"
+        },
+        "seq": true,
+        "at": true,
+        "user_id": {
+          "type": "string"
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "permissions.changed": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        }
+      ],
+      "properties": {
+        "type": {
+          "const": "permissions.changed"
+        },
+        "seq": true,
+        "at": true
+      },
+      "unevaluatedProperties": false
+    },
+    "account.revoked": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        }
+      ],
+      "properties": {
+        "type": {
+          "const": "account.revoked"
+        },
+        "seq": true,
+        "at": true
+      },
+      "unevaluatedProperties": false
+    },
+    "resync": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        }
+      ],
+      "properties": {
+        "type": {
+          "const": "resync"
+        },
+        "seq": true,
+        "at": true
+      },
+      "unevaluatedProperties": false
+    },
+    "run.clarify.requested": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/runBase"
+        }
+      ],
+      "required": [
+        "clarification_id",
+        "question",
+        "choices",
+        "multi_select",
+        "can_answer"
+      ],
+      "properties": {
+        "type": {
+          "const": "clarify.requested"
+        },
+        "run_id": true,
+        "seq": true,
+        "at": true,
+        "clarification_id": {
+          "type": "string"
+        },
+        "question": {
+          "type": "string"
+        },
+        "choices": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "multi_select": {
+          "type": "boolean"
+        },
+        "expires_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "can_answer": {
+          "type": "boolean",
+          "description": "Whether this user may answer (the person who started the run)"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "run.clarify.answered": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/runBase"
+        }
+      ],
+      "required": [
+        "clarification_id",
+        "outcome"
+      ],
+      "properties": {
+        "type": {
+          "const": "clarify.answered"
+        },
+        "run_id": true,
+        "seq": true,
+        "at": true,
+        "clarification_id": {
+          "type": "string"
+        },
+        "outcome": {
+          "type": "string",
+          "description": "answered | timed_out | cancelled (open)"
+        },
+        "answer": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "answered_by": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "steer.accepted": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/runBase"
+        }
+      ],
+      "required": [
+        "text",
+        "by"
+      ],
+      "properties": {
+        "type": {
+          "const": "steer.accepted"
+        },
+        "run_id": true,
+        "seq": true,
+        "at": true,
+        "text": {
+          "type": "string"
+        },
+        "by": {
+          "type": "string"
+        },
+        "message_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "user.clarify.requested": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        }
+      ],
+      "required": [
+        "clarification_id",
+        "agent_id",
+        "session_id",
+        "run_id",
+        "question"
+      ],
+      "properties": {
+        "type": {
+          "const": "clarify.requested"
+        },
+        "seq": true,
+        "at": true,
+        "clarification_id": {
+          "type": "string"
+        },
+        "agent_id": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "question": {
+          "type": "string"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "task.changed": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        }
+      ],
+      "required": [
+        "task_id",
+        "column"
+      ],
+      "properties": {
+        "type": {
+          "const": "task.changed"
+        },
+        "seq": true,
+        "at": true,
+        "task_id": {
+          "type": "string"
+        },
+        "column": {
+          "type": "string"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "task.removed": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        }
+      ],
+      "required": [
+        "task_id"
+      ],
+      "properties": {
+        "type": {
+          "const": "task.removed"
+        },
+        "seq": true,
+        "at": true,
+        "task_id": {
+          "type": "string"
+        }
+      },
+      "unevaluatedProperties": false
+    }
+  }
+}

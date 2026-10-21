@@ -1,0 +1,28 @@
+id: 1
+event: run.started
+data: {"type":"run.started","run_id":"run_01JAC3Z8N7Q2W5E8R1T4Y7U0I3","seq":1,"at":"2026-10-20T19:02:11.000Z","session_id":"ses_01JAC3Y","agent_id":"agt_mini_ops","model_label":"Local (safe)","message_id":"msg_01JAC3Z9"}
+
+id: 2
+event: message.delta
+data: {"type":"message.delta","run_id":"run_01JAC3Z8N7Q2W5E8R1T4Y7U0I3","seq":2,"at":"2026-10-20T19:02:12.000Z","delta":"Let me check the disk space"}
+
+id: 3
+event: message.delta
+data: {"type":"message.delta","run_id":"run_01JAC3Z8N7Q2W5E8R1T4Y7U0I3","seq":3,"at":"2026-10-20T19:02:13.000Z","delta":" on mini-ops.\n\n"}
+
+id: 4
+event: tool.started
+data: {"type":"tool.started","run_id":"run_01JAC3Z8N7Q2W5E8R1T4Y7U0I3","seq":4,"at":"2026-10-20T19:02:14.000Z","tool_call_id":"tc_1","tool":"terminal","preview":"df -h /"}
+
+id: 5
+event: tool.completed
+data: {"type":"tool.completed","run_id":"run_01JAC3Z8N7Q2W5E8R1T4Y7U0I3","seq":5,"at":"2026-10-20T19:02:15.000Z","tool_call_id":"tc_1","tool":"terminal","state":"done","duration_s":0.41,"output_excerpt":"Filesystem  Size  Used Avail Use% Mounted on\n/dev/sda2   234G  101G  121G  46% /"}
+
+id: 6
+event: message.delta
+data: {"type":"message.delta","run_id":"run_01JAC3Z8N7Q2W5E8R1T4Y7U0I3","seq":6,"at":"2026-10-20T19:02:16.000Z","delta":"**121 GB free** of 234 GB (46% used)."}
+
+id: 7
+event: run.completed
+data: {"type":"run.completed","run_id":"run_01JAC3Z8N7Q2W5E8R1T4Y7U0I3","seq":7,"at":"2026-10-20T19:02:17.000Z","output":"Let me check the disk space on mini-ops.\n\n**121 GB free** of 234 GB (46% used).","usage":{"input_tokens":5242,"output_tokens":61}}
+

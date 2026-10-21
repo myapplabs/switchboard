@@ -1,0 +1,17 @@
+# Switchboard hub as a systemd *user* service (no root needed). Starts at boot when lingering is on
+# (`loginctl enable-linger <user>`). Installed by deploy.sh into ~/.config/systemd/user/.
+[Unit]
+Description=Switchboard hub
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Environment=JAVA_HOME=%h/.local/share/switchboard-hub/jre
+# Small heap: the hub is light, and these machines also run Hermes.
+Environment="JAVA_OPTS=-Xmx256m -XX:+UseSerialGC"
+ExecStart=%h/.local/share/switchboard-hub/app/bin/switchboard-hub serve
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

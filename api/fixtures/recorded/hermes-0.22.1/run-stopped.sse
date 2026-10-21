@@ -1,0 +1,241 @@
+: open
+
+id: 0
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553540.4276252, "delta": "The beam", "seq": 0}
+
+id: 1
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553540.4304838, "delta": " swept across", "seq": 1}
+
+id: 2
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553540.4980135, "delta": " the water at midnight", "seq": 2}
+
+id: 3
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553540.5001001, "delta": ", a slow", "seq": 3}
+
+id: 4
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553540.5021484, "delta": " white", "seq": 4}
+
+id: 5
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553540.571425, "delta": " finger tracing the same", "seq": 5}
+
+id: 6
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553540.5736895, "delta": " arc", "seq": 6}
+
+id: 7
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553540.5763457, "delta": " it had traced for", "seq": 7}
+
+id: 8
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553540.643782, "delta": " forty-three", "seq": 8}
+
+id: 9
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553540.6466749, "delta": " years. Elias didn", "seq": 9}
+
+id: 10
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553540.6493387, "delta": "'t count", "seq": 10}
+
+id: 11
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553540.7149165, "delta": " the rotations", "seq": 11}
+
+id: 12
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553540.7167797, "delta": " anymore. He counted", "seq": 12}
+
+id: 13
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553540.7186809, "delta": " the things", "seq": 13}
+
+id: 14
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553540.8145115, "delta": " that mattered", "seq": 14}
+
+id: 15
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.291293, "delta": ": the three", "seq": 15}
+
+id: 16
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.2925076, "delta": "-g", "seq": 16}
+
+id: 17
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.293982, "delta": "allon oil cans", "seq": 17}
+
+id: 18
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.2949705, "delta": " in", "seq": 18}
+
+id: 19
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.296029, "delta": " the cell", "seq": 19}
+
+id: 20
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.2969556, "delta": "ar (", "seq": 20}
+
+id: 21
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.2980843, "delta": "twelve), the", "seq": 21}
+
+id: 22
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.2991214, "delta": " days since", "seq": 22}
+
+id: 23
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.3001032, "delta": " the supply", "seq": 23}
+
+id: 24
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.3011563, "delta": " tender", "seq": 24}
+
+id: 25
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.302108, "delta": " made", "seq": 25}
+
+id: 26
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.3032403, "delta": " harbor", "seq": 26}
+
+id: 27
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.304311, "delta": " (se", "seq": 27}
+
+id: 28
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.3053203, "delta": "venteen), the", "seq": 28}
+
+id: 29
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.3063273, "delta": " letters from", "seq": 29}
+
+id: 30
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.307306, "delta": " his daughter", "seq": 30}
+
+id: 31
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.3085797, "delta": " stacked", "seq": 31}
+
+id: 32
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.3095698, "delta": " in the", "seq": 32}
+
+id: 33
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.310601, "delta": " desk drawer (two", "seq": 33}
+
+id: 34
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.3115795, "delta": ", both unopened", "seq": 34}
+
+id: 35
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.3126352, "delta": ").\n\nThe", "seq": 35}
+
+id: 36
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.3148031, "delta": " light", "seq": 36}
+
+id: 37
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.317065, "delta": " itself", "seq": 37}
+
+id: 38
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.3582604, "delta": " was a Fres", "seq": 38}
+
+id: 39
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.3605366, "delta": "nel lens, third", "seq": 39}
+
+id: 40
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.362736, "delta": "-order, installed", "seq": 40}
+
+id: 41
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.4561036, "delta": " in 18", "seq": 41}
+
+id: 42
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.4588945, "delta": "87", "seq": 42}
+
+id: 43
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.4605045, "delta": ". Eight", "seq": 43}
+
+id: 44
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.7007256, "delta": " hundred pounds", "seq": 44}
+
+id: 45
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.7023883, "delta": " of hand", "seq": 45}
+
+id: 46
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553541.9742196, "delta": "-ground", "seq": 46}
+
+id: 47
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.2444234, "delta": " pr", "seq": 47}
+
+id: 48
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.267461, "delta": "isms floating", "seq": 48}
+
+id: 49
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.3443842, "delta": " in a mercury", "seq": 49}
+
+id: 50
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.3466878, "delta": " bath. When", "seq": 50}
+
+id: 51
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.348304, "delta": " the mechanism", "seq": 51}
+
+id: 52
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.4406824, "delta": " was", "seq": 52}
+
+id: 53
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.4426348, "delta": " clean and", "seq": 53}
+
+id: 54
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.444497, "delta": " the weight", "seq": 54}
+
+id: 55
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.5138779, "delta": " wound", "seq": 55}
+
+id: 56
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.5154688, "delta": ",", "seq": 56}
+
+id: 57
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.517055, "delta": " it turned", "seq": 57}
+
+id: 58
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.5186012, "delta": " with a", "seq": 58}
+
+id: 59
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.5861266, "delta": " sound like breathing", "seq": 59}
+
+id: 60
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.5887854, "delta": ". Tonight", "seq": 60}
+
+id: 61
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.5935872, "delta": " it groaned.", "seq": 61}
+
+id: 62
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.6576183, "delta": " The mercury had developed", "seq": 62}
+
+id: 63
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.6602888, "delta": " a tremor", "seq": 63}
+
+id: 64
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.661995, "delta": " \u2014", "seq": 64}
+
+id: 65
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.7532763, "delta": " not", "seq": 65}
+
+id: 66
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.7550218, "delta": " enough", "seq": 66}
+
+id: 67
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.757213, "delta": " to stop the rotation", "seq": 67}
+
+id: 68
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.8278296, "delta": ", enough", "seq": 68}
+
+id: 69
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.8298435, "delta": " to scatter", "seq": 69}
+
+id: 70
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.8323336, "delta": " the beam", "seq": 70}
+
+id: 71
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553542.8350692, "delta": " at", "seq": 71}
+
+id: 72
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553543.092732, "delta": " the edges. Elias", "seq": 72}
+
+id: 73
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553543.0953681, "delta": " had written", "seq": 73}
+
+id: 74
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553543.112469, "delta": " the", "seq": 74}
+
+id: 75
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553543.5032835, "delta": " L", "seq": 75}
+
+id: 76
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553543.7618418, "delta": "ighthouse Board", "seq": 76}
+
+id: 77
+data: {"event": "message.delta", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553544.192147, "delta": " three times. Three", "seq": 77}
+
+id: 78
+data: {"event": "run.cancelled", "run_id": "run_fa0f2efe670f415792e0e30ef1ef36e8", "timestamp": 1792553544.8874836, "completed": false, "partial": false, "interrupted": true, "turn_exit_reason": "interrupted_during_api_call", "seq": 78}
+
+: stream closed
+

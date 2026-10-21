@@ -1,0 +1,22 @@
+{
+ "object": "hermes.run",
+ "model": "hermes-agent",
+ "runtime": {
+  "provider": "",
+  "model": "",
+  "route_source": "global"
+ },
+ "created_at": 1792553522.8803537,
+ "pending_controls": [],
+ "run_id": "run_0465380688dd41359659e8790b0c56ac",
+ "status": "completed",
+ "session_id": "switchboard-rec-f3c9a484",
+ "admission_id": "1470d306a7da443f8e31b719597c4e9e",
+ "execution_generation": 1,
+ "output": "It's 8:32 PM PDT on Tuesday, October 20, 2026.",
+ "usage": {
+  "input_tokens": 30489,
+  "output_tokens": 101,
+  "total_tokens": 30590
+ }
+}

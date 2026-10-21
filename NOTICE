@@ -1,0 +1,9 @@
+Switchboard
+Copyright 2026 AppLabs, LLC
+
+The hub (hub/) is licensed under the GNU Affero General Public License, version 3 (hub/LICENSE).
+Everything else in this repository (the app, the API contract, the push relay and the website) is
+licensed under the Apache License, Version 2.0 (LICENSE).
+
+The licenses cover the code. They don't grant use of the Switchboard name or logo: forks and
+redistributed builds should use their own name and logo.
