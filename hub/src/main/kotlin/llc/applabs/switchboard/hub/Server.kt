@@ -135,6 +135,11 @@ fun Application.hubModule(hub: Hub) {
             call.problem(HttpStatusCode.BadRequest, HubException.invalid(e.message ?: "Bad request").problem())
         }
         exception<Throwable> { call, e ->
+            // A phone that went away mid-stream (app closed, network change, hub restart) is normal, not an error.
+            if (generateSequence(e) { it.cause }.any { it is io.ktor.utils.io.ClosedWriteChannelException }) {
+                log.debug("client went away on {}", call.request.local.uri)
+                return@exception
+            }
             log.error("unhandled error on {}", call.request.local.uri, e)
             call.problem(HttpStatusCode.InternalServerError, Problem("hub_error", "Hub error", 500, "Something went wrong on the hub."))
         }

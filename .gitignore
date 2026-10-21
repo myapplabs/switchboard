@@ -8,3 +8,6 @@ __pycache__/
 
 # Copied from install.sh when the website is deployed (firebase.json predeploy)
 passkey-domain/public/install.sh
+
+# Firebase deploy cache (per machine)
+.firebase/
