@@ -23,7 +23,17 @@ Where Switchboard is going. Plans change; issues and discussions are welcome.
 - **More agents:** OpenClaw and OpenAI-compatible agents through new adapters.
 - **More from the phone:** the share sheet, voice, widgets, several hubs in one app.
 
+- **Smarter delegation on the board** (rule-based, visible and overridable):
+  - when several agents qualify for an "any #tag" step, prefer the cheaper one, then the free one;
+  - track record from your reviews: how often each agent's work is accepted or sent back, per tag, used to
+    prefer the agent that does a kind of task best;
+  - the coordinator sees each agent's track record, not only its description.
+
 ## Later
+
+- **An optional router agent:** an agent you designate (like the coordinator) suggests which agent should
+  take a new chat or card, from what it says. The suggestion is shown and can be overridden; the hub itself
+  never calls an AI model.
 
 - An adapter SDK so the community can add agent types.
 - Features for organisations: single sign-on, custom roles, audit export.
