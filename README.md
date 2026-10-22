@@ -220,6 +220,25 @@ See the [setup guide](docs/setup-guide.md#docker) for giving it its address with
 **Notifications** tell you when an approval or a question is waiting, when a long answer is ready, and
 when a board card needs you or is ready for review.
 
+### How work gets to an agent
+
+Switchboard doesn't guess. In most cases **you choose the agent**, and where the hub chooses, it follows a
+few simple, fixed rules. No AI is involved, except in a coordinator's plan, which you approve.
+
+- **Chats:** you tap the agent you want to talk to.
+- **Ask all:** you pick the agents. Every available agent you're allowed to use is selected to begin with.
+- **A board card with a named agent:** each step goes to the agent you chose, in order.
+- **A board card with "any agent tagged …"** (for example "any #research"): the hub takes the agents with
+  that tag (set under More → What agents are good at) that the card's creator is allowed to use, skips any
+  that are offline or already working on another card, and picks the first one left. If they're all busy,
+  the card waits in Ready; if none qualifies, it waits in Needs you with the reason.
+- **"Let the coordinator plan it":** the coordinator, an agent you chose, reads the card and the
+  descriptions of the agents the card's creator may use, and proposes sub-cards, each with an agent.
+  Nothing runs until you approve the plan, ask for another, or close the card.
+
+Good agent descriptions and tags (More → What agents are good at) are what make tagged steps and the
+coordinator's plans work well.
+
 ## Who can do what
 
 Everyone has a **role**:
