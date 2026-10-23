@@ -12,6 +12,10 @@ class SwitchboardApp : Application() {
     var currentActivity: WeakReference<Activity> = WeakReference(null)
         private set
 
+    /** Activities on screen; above 0, the app is open and updates live, so notifications aren't shown. */
+    @Volatile private var started = 0
+    val inForeground: Boolean get() = started > 0
+
     val container: AppContainer by lazy {
         AppContainer(
             passkeys = AndroidPasskeys(this) { currentActivity.get() },
@@ -30,9 +34,9 @@ class SwitchboardApp : Application() {
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             override fun onActivityResumed(a: Activity) { currentActivity = WeakReference(a) }
             override fun onActivityCreated(a: Activity, b: Bundle?) { currentActivity = WeakReference(a) }
-            override fun onActivityStarted(a: Activity) {}
+            override fun onActivityStarted(a: Activity) { started++ }
             override fun onActivityPaused(a: Activity) {}
-            override fun onActivityStopped(a: Activity) {}
+            override fun onActivityStopped(a: Activity) { started = (started - 1).coerceAtLeast(0) }
             override fun onActivitySaveInstanceState(a: Activity, b: Bundle) {}
             override fun onActivityDestroyed(a: Activity) {}
         })

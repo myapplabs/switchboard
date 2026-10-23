@@ -39,6 +39,8 @@ class PushService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         val data = message.data
         val kind = data["kind"] ?: return
+        // The app is open: it already shows this live, so no notification on top.
+        if ((application as? SwitchboardApp)?.inForeground == true) return
         Notifications.show(this, kind, data["session_id"], data["approval_id"] ?: data["run_id"] ?: data["job_id"] ?: data["task_id"], data["task_id"])
     }
 }
