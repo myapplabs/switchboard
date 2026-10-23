@@ -80,6 +80,27 @@ class Hub(
         members.notifier = notifier
     }
 
+    /**
+     * Delete the caller's account (both app stores require deletion from inside the app). A member's goes as
+     * [Members.deleteSelf] describes. The owner's account can't exist without the hub, so the owner deletes
+     * everything: every conversation (on the agents too, best effort), member, agent, key, job and setting.
+     * The hub then starts over, waiting for a new owner (`switchboard-hub setup-code`).
+     */
+    suspend fun deleteAccount(user: HubUser, input: DeleteAccountIn) {
+        if (!user.isOwner) { members.deleteSelf(user); return }
+        val name = accounts.hub()?.second.orEmpty()
+        if (input.confirm?.trim()?.equals(name.trim(), ignoreCase = true) != true)
+            throw HubException.invalid("confirm: type the hub's name (\"$name\") to delete it and everything on it")
+        val everyone = db.query("SELECT u.id, m.role, u.display_name FROM user u JOIN membership m ON m.user_id = u.id") {
+            HubUser(it.getString(1), user.hubId, Role.valueOf(it.getString(2)), it.getString(3)) }
+        for (u in everyone) runCatching { kotlinx.coroutines.withTimeout(15_000) { conversations.deleteAllOwnedBy(u) } }
+            .onFailure { log.info("hub deletion: some of {}'s conversations stay on their agents: {}", u.userId, it.message) }
+        events.publish(everyone.map { it.userId }, "account.revoked")
+        db.wipe()
+        accounts.ensureHub(config.hubName)
+        log.warn("The owner deleted their account: everything on this hub was deleted. Run `switchboard-hub setup-code` to start again.")
+    }
+
     /** Ask all (spec F15): one prompt to several agents, a new conversation each; agents that can't start say why. */
     suspend fun askAll(user: HubUser, input: AskAllIn): Items<AskAllItem> {
         val ids = input.agentIds.distinct()
@@ -202,6 +223,10 @@ fun Application.hubModule(hub: Hub) {
             }
             authenticate("bearer") {
                 get("/me") { call.respond(hub.accounts.me(call.user())) }
+                delete("/me") {
+                    hub.deleteAccount(call.user(), runCatching { call.receive<DeleteAccountIn>() }.getOrDefault(DeleteAccountIn()))
+                    call.respond(HttpStatusCode.NoContent)
+                }
                 run {   // members and invites (contract 0.3.0; was /household/…)
                     get("/members") { call.respond(hub.members.list(call.user())) }
                     patch("/members/{user_id}") { call.respond(hub.members.updateMember(call.user(), call.parameters["user_id"]!!, call.receive<MemberPatch>())) }

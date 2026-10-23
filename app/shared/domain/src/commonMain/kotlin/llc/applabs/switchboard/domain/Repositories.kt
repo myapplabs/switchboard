@@ -75,6 +75,11 @@ interface AuthRepository {
     suspend fun signInWithToken(hubUrl: String, token: String)
     suspend fun refreshMe()
     suspend fun signOut()
+    /**
+     * Delete this account on the hub, then sign out. A member's own data goes; for the owner, the whole hub
+     * and everything on it ([confirmHubName] must be the hub's name).
+     */
+    suspend fun deleteAccount(confirmHubName: String? = null)
 }
 
 interface AgentsRepository {

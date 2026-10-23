@@ -62,7 +62,9 @@ We don't sell personal information, share it for cross-context behavioral advert
 
 ## 7. Your choices and rights
 
-**Information on a hub.** You can delete your conversations in the App, sign out other devices (More, Signed-in devices), and turn notifications off. To have your account deleted, ask the hub owner to remove you (in the App: More, Members, your name, Remove member): this deletes the conversations you own, on the hub and on its agents, signs out all your devices, and ends your access. Your name stays in the hub's activity log until those entries expire (90 days). A hub owner can delete everything by uninstalling the hub and deleting its data folder.
+**Deleting your account.** You can delete your account in the App at any time: More, Account, Delete my account. This deletes the conversations you own (on the hub and on its agents), your access to agents, your quick commands, your passkey registration, devices and notification tokens on the hub, and signs you out everywhere. Your name is replaced with "Deleted member" wherever it still appears, such as the activity log and board cards you created (the cards stay, for the people you worked with). If you own the hub, your account can't exist without it, so deleting it deletes everything on the hub: every member's account and conversations, the agents' settings and keys, jobs, cards and settings. A hub owner can also remove members. If you can't use the App, see switchboard.applabs.llc/delete-account.html.
+
+**Other choices.** You can delete single conversations in the App, sign out other devices (More, Signed-in devices), and turn notifications off. A hub owner can also delete everything by uninstalling the hub and deleting its data folder.
 
 **Information AppLabs processes.** Uninstalling the App or turning notifications off stops the Relay from delivering to your device. Email us to ask about, correct or delete anything we hold about you.
 

@@ -35,6 +35,15 @@ class Db private constructor(private val conn: Connection) : AutoCloseable {
         conn.prepareStatement(sql).use { st -> bind(st, args); st.executeUpdate() }
     }
 
+    /** Delete every row of every table (the schema stays), then compact the file so nothing lingers on disk. */
+    fun wipe() = synchronized(conn) {
+        val tables = query("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name != 'schema_version'") { it.getString(1) }
+        conn.createStatement().use { it.execute("PRAGMA foreign_keys = OFF") }
+        try { tx { c -> c.createStatement().use { st -> tables.forEach { st.execute("DELETE FROM \"$it\"") } } } }
+        finally { conn.createStatement().use { it.execute("PRAGMA foreign_keys = ON") } }
+        conn.createStatement().use { it.execute("VACUUM") }
+    }
+
     override fun close() = conn.close()
 
     companion object {

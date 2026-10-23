@@ -160,6 +160,12 @@ class AuthRepositoryImpl(private val client: HubClient, private val passkeys: Pa
         _state.value = AuthState.SignedOut(tokens.hubUrl)
     }
 
+    override suspend fun deleteAccount(confirmHubName: String?) {
+        client.call<Unit>(HttpMethod.Delete, "/me", buildJsonObject { confirmHubName?.let { put("confirm", it) } })
+        tokens.clearSession()
+        _state.value = AuthState.SignedOut(tokens.hubUrl)
+    }
+
     /** The hub revoked this account or device. */
     fun revoked() { tokens.clearSession(); _state.value = AuthState.SignedOut(tokens.hubUrl) }
 }

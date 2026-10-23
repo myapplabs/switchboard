@@ -12,7 +12,12 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PUBLIC = ROOT / "passkey-domain" / "public"
-PAGES = {"terms": "Terms of Use", "privacy": "Privacy Policy"}
+# file name → (heading, browser tab title)
+PAGES = {
+    "terms": ("Terms of Use", "Terms of Use · Switchboard"),
+    "privacy": ("Privacy Policy", "Privacy Policy · Switchboard"),
+    "delete-account": ("Delete your Switchboard account", "Delete your account · Switchboard"),
+}
 
 
 def inline(text: str) -> str:
@@ -25,14 +30,15 @@ def inline(text: str) -> str:
 
 
 def body(markdown: str) -> str:
-    out, para, items = [], [], []
+    out, para, items, ordered = [], [], [], [False]
 
     def flush():
         if para:
             out.append(f"<p>{inline(' '.join(para))}</p>")
             para.clear()
         if items:
-            out.append("<ul>" + "".join(f"<li>{inline(i)}</li>" for i in items) + "</ul>")
+            tag = "ol" if ordered[0] else "ul"
+            out.append(f"<{tag}>" + "".join(f"<li>{inline(i)}</li>" for i in items) + f"</{tag}>")
             items.clear()
 
     for line in markdown.splitlines():
@@ -43,10 +49,11 @@ def body(markdown: str) -> str:
         elif m := re.match(r"(#{2,6}) (.*)", line):
             flush()
             out.append(f"<h2>{inline(m.group(2))}</h2>")
-        elif line.startswith("- "):
+        elif m := re.match(r"(- |\d+\. )(.*)", line):
             if para:
                 flush()
-            items.append(line[2:])
+            ordered[0] = m.group(1) != "- "
+            items.append(m.group(2))
         else:
             if items:
                 flush()
@@ -55,15 +62,15 @@ def body(markdown: str) -> str:
     return "\n".join(out)
 
 
-def page(name: str, title: str) -> str:
+def page(name: str, title: str, tab: str) -> str:
     md = (ROOT / "legal" / f"{name}.md").read_text()
     return f"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{title} · Switchboard</title>
-<meta name="description" content="Switchboard {title.lower()}, by AppLabs, LLC.">
+<title>{tab}</title>
+<meta name="description" content="{title}: Switchboard, by AppLabs, LLC.">
 <meta name="theme-color" content="#0B0D10">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/style.css">
@@ -82,7 +89,7 @@ def page(name: str, title: str) -> str:
 </div>
 <footer><div class="wrap">
   <span>Switchboard: Agent Hub · by <a href="https://applabs.llc">AppLabs, LLC</a> · <a href="https://github.com/myapplabs/switchboard">Source on GitHub</a></span>
-  <span class="mono"><a href="/terms.html">Terms of Use</a> · <a href="/privacy.html">Privacy Policy</a></span>
+  <span class="mono"><a href="/terms.html">Terms of Use</a> · <a href="/privacy.html">Privacy Policy</a> · <a href="/delete-account.html">Delete your account</a></span>
 </div></footer>
 </body>
 </html>
@@ -92,9 +99,9 @@ def page(name: str, title: str) -> str:
 def main() -> int:
     check = "--check" in sys.argv
     stale = []
-    for name, title in PAGES.items():
+    for name, (title, tab) in PAGES.items():
         target = PUBLIC / f"{name}.html"
-        text = page(name, title)
+        text = page(name, title, tab)
         if check:
             if not target.exists() or target.read_text() != text:
                 stale.append(target.name)

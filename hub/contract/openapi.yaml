@@ -225,6 +225,28 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Me" }
         "401": { $ref: "#/components/responses/Problem" }
+    delete:
+      tags: [me]
+      operationId: deleteMe
+      summary: Delete my account (app stores require deletion from inside the app)
+      description: >-
+        A member's account: their conversations (on the agents too), grants, quick commands, passkeys, devices,
+        notification tokens, shares, job-result deliveries and FORGE bridges are deleted, the account is disabled
+        and its name becomes "Deleted member"; activity action `account_deleted`. The owner's account can't exist
+        without the hub, so the owner deletes everything on the hub, confirming with the hub's name (case and
+        surrounding spaces ignored); the hub then waits for a new owner (`switchboard-hub setup-code`).
+      x-release: v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                confirm: { type: string, description: "Owner only: the hub's name" }
+      responses:
+        "204": { description: Deleted; this device's tokens no longer work }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
 
   /me/events:
     get:
@@ -2042,7 +2064,7 @@ components:
         action:
           type: string
           description: Open enum
-          enum: [run_started, approval_decided, member_joined, member_removed, role_changed, grants_changed,
+          enum: [run_started, approval_decided, member_joined, member_removed, account_deleted, role_changed, grants_changed,
                  agent_added, agent_changed, agent_removed, job_changed, invite_created, device_revoked,
                  agent_described, task_created, task_reviewed, task_deleted,
                  forge_bridge_created, forge_bridge_revoked, forge_ticket_started, forge_decided]

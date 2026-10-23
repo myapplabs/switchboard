@@ -290,6 +290,12 @@ data class MessageOut(
 data class Page<T>(val items: List<T>, @SerialName("next_cursor") val nextCursor: String? = null)
 
 @Serializable
+data class DeleteAccountIn(
+    /** The owner confirms by typing the hub's name: deleting the owner's account deletes the whole hub. */
+    val confirm: String? = null,
+)
+
+@Serializable
 data class RunInputIn(
     val text: String,
     @SerialName("model_id") val modelId: String? = null,

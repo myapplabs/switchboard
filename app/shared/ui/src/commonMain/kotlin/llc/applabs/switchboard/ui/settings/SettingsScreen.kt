@@ -1,6 +1,9 @@
 package llc.applabs.switchboard.ui.settings
 
 import androidx.compose.foundation.clickable
+import llc.applabs.switchboard.domain.model.Roles
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.AlertDialog
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.PaddingValues
@@ -59,7 +62,13 @@ import llc.applabs.switchboard.ui.common.SectionLabel
 import llc.applabs.switchboard.ui.common.friendly
 import llc.applabs.switchboard.ui.common.shortTime
 
-data class SettingsUiState(val devices: List<Device> = emptyList(), val error: String? = null)
+data class SettingsUiState(
+    val devices: List<Device> = emptyList(),
+    val error: String? = null,
+    /** Deleting the account: in progress, and why it failed. */
+    val deleting: Boolean = false,
+    val deleteError: String? = null,
+)
 
 class SettingsViewModel(private val auth: AuthRepository, private val members: MembersRepository, private val push: PushRepository) : ViewModel() {
     private val _state = MutableStateFlow(SettingsUiState())
@@ -74,6 +83,15 @@ class SettingsViewModel(private val auth: AuthRepository, private val members: M
         try { members.removeDevice(id); load() } catch (e: Exception) { _state.update { it.copy(error = e.friendly()) } }
     }
     fun signOut() = viewModelScope.launch { auth.signOut() }
+
+    /** Delete this account (the owner: the whole hub, confirmed with its name); signs out when done. */
+    fun deleteAccount(confirmHubName: String?) = viewModelScope.launch {
+        _state.update { it.copy(deleting = true, deleteError = null) }
+        try { auth.deleteAccount(confirmHubName) }
+        catch (e: Exception) { _state.update { it.copy(deleteError = e.friendly()) } }
+        finally { _state.update { it.copy(deleting = false) } }
+    }
+    fun clearDeleteError() = _state.update { it.copy(deleteError = null) }
 
     fun setNotify(kind: String, on: Boolean) = viewModelScope.launch {
         try { push.setPreference(kind, on); load() } catch (e: Exception) { _state.update { it.copy(error = e.friendly()) } }
@@ -147,6 +165,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, me: Me, hubUrl: String, onMembe
     val toggle = { key: String -> open = if (key in open) open - key else open + key }
     val clipboard = LocalClipboardManager.current
     var copied by remember { mutableStateOf(false) }
+    var deleting by remember { mutableStateOf(false) }
     val thisDevice = s.devices.firstOrNull { it.thisDevice }
     Scaffold(topBar = { TopAppBar(title = { Text("More") }) }) { pad ->
         LazyColumn(Modifier.padding(pad).fillMaxSize().padding(horizontal = 16.dp)) {
@@ -172,6 +191,10 @@ fun SettingsScreen(viewModel: SettingsViewModel, me: Me, hubUrl: String, onMembe
                         .padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(hubUrl, style = MonoLabel, modifier = Modifier.weight(1f))
                         Text(if (copied) "Copied" else "Copy", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    }
+                    TextButton(onClick = { deleting = true }, contentPadding = PaddingValues(horizontal = 0.dp),
+                        modifier = Modifier.testTag("delete-account")) {
+                        Text(if (me.role == Roles.OWNER) "Delete my account and this hub" else "Delete my account", color = MaterialTheme.colorScheme.error)
                     }
                 }
             }
@@ -235,4 +258,38 @@ fun SettingsScreen(viewModel: SettingsViewModel, me: Me, hubUrl: String, onMembe
             }
         }
     }
+    if (deleting) DeleteAccountDialog(me, s.deleting, s.deleteError,
+        onDelete = viewModel::deleteAccount, onDismiss = { deleting = false; viewModel.clearDeleteError() })
+}
+
+/** Confirms deleting the account. The owner's account can't exist without the hub, so it deletes the hub's data too. */
+@Composable
+private fun DeleteAccountDialog(me: Me, busy: Boolean, error: String?, onDelete: (String?) -> Unit, onDismiss: () -> Unit) {
+    val owner = me.role == Roles.OWNER
+    var typed by remember { mutableStateOf("") }
+    val confirmed = !owner || typed.trim().equals(me.hub.name.trim(), ignoreCase = true)
+    AlertDialog(onDismissRequest = { if (!busy) onDismiss() },
+        title = { Text(if (owner) "Delete your account and this hub?" else "Delete your account?") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (owner) {
+                    Text("You own ${me.hub.name}. Your account can't exist without the hub, so this deletes everything on it: every member's account and conversations, the agents you added and their keys, jobs, board cards and settings. The agents themselves keep running on their computers.")
+                    Text("This can't be undone. To use Switchboard again, set the hub up from the start.")
+                    OutlinedTextField(typed, { typed = it }, singleLine = true, label = { Text("Type \"${me.hub.name}\" to confirm") },
+                        modifier = Modifier.fillMaxWidth().testTag("delete-confirm"))
+                } else {
+                    Text("This deletes your account on ${me.hub.name}: your conversations (here and on the agents), your access to agents, your quick commands, and your sign-in on every device. Board cards you made stay, without your name.")
+                    Text("This can't be undone. To come back, you'd need a new invite.")
+                }
+                Text("Your passkey stays in your password manager. You can delete it there.", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onDelete(if (owner) typed else null) }, enabled = confirmed && !busy, modifier = Modifier.testTag("delete-account-confirm")) {
+                Text(if (busy) "Deleting…" else "Delete", color = if (confirmed && !busy) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text("Cancel") } })
 }

@@ -283,9 +283,38 @@ class Members(
         accounts.activity(user.hubId, user.userId, null, "device_revoked", """{"device_id":"$id"}""")
     }
 
+    /**
+     * A member deletes their own account (app stores: deletion from inside the app). Their conversations go
+     * (here and on the agents), as do their passkeys, devices and notification tokens, personal quick
+     * commands, grants, shares, job-result deliveries and FORGE bridges; the account is disabled and its name
+     * replaced, so the activity log and board cards no longer name them. The owner deletes the whole hub
+     * instead ([Hub.deleteAccount]).
+     */
+    suspend fun deleteSelf(user: HubUser) {
+        if (user.isOwner) throw HubException.forbidden("The owner deletes the whole hub instead.")
+        onMemberRemoved(user)
+        val t = now()
+        db.tx { c ->
+            fun run(sql: String, vararg args: Any?) = c.prepareStatement(sql).use { Db.bind(it, args); it.executeUpdate() }
+            run("UPDATE token SET revoked_at = COALESCE(revoked_at, ?) WHERE user_id = ?", t, user.userId)
+            run("""UPDATE device SET revoked_at = COALESCE(revoked_at, ?), name = NULL, push_token = NULL, relay_grant = NULL,
+                   notify_prefs_json = '{}' WHERE user_id = ?""", t, user.userId)
+            run("DELETE FROM credential WHERE user_id = ?", user.userId)
+            run("DELETE FROM session_participant WHERE user_id = ?", user.userId)
+            run("DELETE FROM agent_grant WHERE subject_kind = 'user' AND subject = ?", user.userId)
+            run("DELETE FROM quick_command WHERE user_id = ?", user.userId)
+            run("DELETE FROM job_delivery WHERE user_id = ?", user.userId)
+            run("UPDATE forge_bridge SET token_hash = NULL, pair_code_hash = NULL, revoked_at = COALESCE(revoked_at, ?) WHERE user_id = ?", t, user.userId)
+            run("UPDATE user SET display_name = ?, disabled_at = COALESCE(disabled_at, ?) WHERE id = ?", DELETED_NAME, t, user.userId)
+        }
+        events.publish(listOf(user.userId), "account.revoked")
+        accounts.activity(user.hubId, user.userId, null, "account_deleted", "{}")
+    }
+
     private fun requireAdmin(user: HubUser) { if (!user.isAdmin) throw HubException.forbidden("Only the owner and admins manage members.") }
 
     companion object {
+        const val DELETED_NAME = "Deleted member"
         private const val ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
         fun normalize(code: String) = code.uppercase().filter { it.isLetterOrDigit() }
     }
