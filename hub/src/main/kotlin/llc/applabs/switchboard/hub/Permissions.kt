@@ -86,6 +86,13 @@ class Permissions(private val db: Db, private val agents: Agents, private val ac
         return members.filter { (id, role) -> access(HubUser(id, agent.hubId, Role.valueOf(role), ""), agent).canChat }.map { it.first }
     }
 
+    /** Everyone who may manage [agent]'s jobs: owner, admins, members granted `can_manage_jobs`. */
+    fun jobManagers(agent: AgentRecord): List<String> {
+        val members = db.query("SELECT u.id, m.role FROM user u JOIN membership m ON m.user_id = u.id WHERE m.hub_id = ? AND u.disabled_at IS NULL",
+            agent.hubId) { it.getString(1) to it.getString(2) }
+        return members.filter { (id, role) -> access(HubUser(id, agent.hubId, Role.valueOf(role), ""), agent).canManageJobs }.map { it.first }
+    }
+
     fun runsToday(userId: String, agentId: String, modelId: String?): Int {
         val since = LocalDate.now(ZoneOffset.UTC).atStartOfDay().toInstant(ZoneOffset.UTC).toString()
         return if (modelId == null)

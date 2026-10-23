@@ -96,6 +96,7 @@ class HermesJobs(private val http: HttpClient) : AgentJobs {
                 lastRunAt = j.s("last_run_at")?.let { utc(it, offset) },
                 lastResult = when (j.s("last_status")) { "ok", "success" -> "success"; "error", "failure", "failed" -> "failure"; else -> null },
                 nextRunAt = next?.let { utc(it, offset) },
+                lastError = j.s("last_error")?.trim()?.takeIf { it.isNotEmpty() }?.take(500),
             )
         }
 

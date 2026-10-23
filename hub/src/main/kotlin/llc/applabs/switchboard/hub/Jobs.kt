@@ -7,9 +7,12 @@ import llc.applabs.switchboard.hub.adapters.AgentJob
 import llc.applabs.switchboard.hub.adapters.AgentJobs
 import llc.applabs.switchboard.hub.adapters.JobFields
 import llc.applabs.switchboard.hub.adapters.ProfileTarget
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 @Serializable
-data class JobRunOut(val at: String, val result: String, val summary: String? = null)
+data class JobRunOut(val at: String, val result: String?, val summary: String? = null)
 
 @Serializable
 data class JobOut(
@@ -23,6 +26,7 @@ data class JobOut(
     @SerialName("last_run_at") val lastRunAt: String?,
     @SerialName("last_result") val lastResult: String?,
     @SerialName("next_run_at") val nextRunAt: String?,
+    @SerialName("last_error") val lastError: String? = null,
     @SerialName("recent_runs") val recentRuns: List<JobRunOut> = emptyList(),
 )
 
@@ -33,8 +37,17 @@ data class JobIn(val name: String? = null, val schedule: String? = null, val pro
  * Scheduled jobs (spec F17, contract `/agents/{id}/jobs…`), kept by the agent itself (Hermes cron).
  * Anyone who may use the agent sees its jobs; changing them needs job permission (owner, admins,
  * members granted `can_manage_jobs`; never restricted members). Jobs run on the agent's first profile.
+ *
+ * Agents keep only a job's last run, so [watch] checks every agent's jobs every minute and records each
+ * new run (time, result, error) for `recent_runs`; a failed run notifies the people who manage the
+ * agent's jobs (`job_failed`). A job seen for the first time is recorded without a notice.
  */
-class Jobs(private val agents: Agents, private val permissions: Permissions, private val accounts: Accounts, private val events: UserEvents) {
+class Jobs(
+    private val db: Db, private val agents: Agents, private val permissions: Permissions,
+    private val accounts: Accounts, private val events: UserEvents,
+) {
+    var notifier: Notifier? = null
+    private val log = org.slf4j.LoggerFactory.getLogger(Jobs::class.java)
 
     suspend fun list(user: HubUser, agentId: String): Items<JobOut> {
         val (agent, api, target) = context(user, agentId, manage = false)
@@ -59,6 +72,8 @@ class Jobs(private val agents: Agents, private val permissions: Permissions, pri
     suspend fun delete(user: HubUser, agentId: String, jobId: String) {
         val (agent, api, target) = context(user, agentId, manage = true)
         api.deleteJob(target, jobId)
+        db.update("DELETE FROM job_run WHERE agent_id = ? AND job_id = ?", agent.id, jobId)
+        db.update("DELETE FROM job_watch WHERE agent_id = ? AND job_id = ?", agent.id, jobId)
         accounts.activity(user.hubId, user.userId, agent.id, "job_changed", """{"job_id":"$jobId","change":"deleted"}""")
         events.publish(agents.viewers(agent), "job.updated", mapOf("agent_id" to agent.id, "job_id" to jobId, "state" to "deleted", "last_result" to null))
     }
@@ -95,5 +110,58 @@ class Jobs(private val agents: Agents, private val permissions: Permissions, pri
     }
 
     private fun out(agentId: String, j: AgentJob) =
-        JobOut(j.id, agentId, j.name, j.prompt, j.schedule, j.state, j.repeat, j.lastRunAt, j.lastResult, j.nextRunAt)
+        JobOut(j.id, agentId, j.name, j.prompt, j.schedule, j.state, j.repeat, j.lastRunAt, j.lastResult, j.nextRunAt,
+            lastError = j.lastError.takeIf { j.lastResult == "failure" }, recentRuns = recentRuns(agentId, j.id))
+
+    private fun recentRuns(agentId: String, jobId: String): List<JobRunOut> =
+        db.query("SELECT ran_at, result, error FROM job_run WHERE agent_id = ? AND job_id = ? ORDER BY ran_at DESC LIMIT $RECENT",
+            agentId, jobId) { JobRunOut(it.getString(1), it.getString(2), it.getString(3)) }
+
+    // ── run history ─────────────────────────────────────────────────────────
+
+    /** Check every agent's jobs every [intervalMs] and record new runs. */
+    fun watch(scope: kotlinx.coroutines.CoroutineScope, intervalMs: Long = 60_000) = scope.launch {
+        while (isActive) {
+            for (id in agents.allIds()) runCatching { check(id) }.onFailure { log.debug("jobs of {}: {}", id, it.message) }
+            delay(intervalMs)
+        }
+    }
+
+    /** One check of [agentId]'s jobs; returns the runs it recorded. Skips agents without jobs or offline. */
+    suspend fun check(agentId: String): List<JobRunOut> {
+        val agent = agents.record(agentId) ?: return emptyList()
+        val api = agents.adapterFor(agent) as? AgentJobs ?: return emptyList()
+        if (!agent.capabilities.jobs) return emptyList()
+        val target = agents.primaryTarget(agent) ?: return emptyList()
+        val recorded = mutableListOf<JobRunOut>()
+        for (job in api.jobs(target)) {
+            val seen = db.query("SELECT last_run_at FROM job_watch WHERE agent_id = ? AND job_id = ?", agent.id, job.id) {
+                Seen(it.getString(1)) }.firstOrNull()
+            if (seen != null && seen.lastRunAt == job.lastRunAt) continue
+            db.update("INSERT INTO job_watch (agent_id, job_id, last_run_at, seen_at) VALUES (?, ?, ?, ?) " +
+                "ON CONFLICT (agent_id, job_id) DO UPDATE SET last_run_at = excluded.last_run_at, seen_at = excluded.seen_at",
+                agent.id, job.id, job.lastRunAt, now())
+            val at = job.lastRunAt ?: continue
+            val error = job.lastError.takeIf { job.lastResult == "failure" }
+            val inserted = db.update("INSERT OR IGNORE INTO job_run (id, agent_id, job_id, ran_at, result, error, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                newId("jr"), agent.id, job.id, at, job.lastResult, error, now())
+            db.update("DELETE FROM job_run WHERE agent_id = ? AND job_id = ? AND id NOT IN " +
+                "(SELECT id FROM job_run WHERE agent_id = ? AND job_id = ? ORDER BY ran_at DESC LIMIT $KEEP)", agent.id, job.id, agent.id, job.id)
+            if (inserted == 0 || seen == null) continue  // first sighting: history only, no notice
+            recorded += JobRunOut(at, job.lastResult, error)
+            events.publish(agents.viewers(agent), "job.updated", mapOf("agent_id" to agent.id, "job_id" to job.id, "state" to job.state, "last_result" to job.lastResult))
+            if (job.lastResult == "failure") {
+                log.info("job {} on {} failed", job.name, agent.name)
+                notifier?.notify(permissions.jobManagers(agent), "job_failed", agent.hubId, mapOf("agent_id" to agent.id, "job_id" to job.id))
+            }
+        }
+        return recorded
+    }
+
+    private data class Seen(val lastRunAt: String?)
+
+    companion object {
+        const val RECENT = 10
+        const val KEEP = 50
+    }
 }

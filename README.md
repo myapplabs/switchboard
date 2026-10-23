@@ -215,6 +215,8 @@ See the [setup guide](docs/setup-guide.md#docker) for giving it its address with
   approval, a question, a problem) wait in **Needs you**. With a **coordinator** agent, you can let it
   plan a bigger task into smaller ones; you approve its plan first.
 - **Jobs tab:** the agents' scheduled tasks, such as a daily summary. Pause, run now, edit or delete them.
+  Each job shows when it last ran, whether its recent runs worked, and why the last one failed; you're
+  notified when a run fails.
 - **More:** members and invites, what each agent is good at, notifications, and your devices.
 
 **Notifications** tell you when an approval or a question is waiting, when a long answer is ready, and

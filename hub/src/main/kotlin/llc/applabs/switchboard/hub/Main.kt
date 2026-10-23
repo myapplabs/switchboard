@@ -47,6 +47,7 @@ private fun serve(dataDir: java.nio.file.Path) {
     hub.runs.recover()
     hub.conversations.startCleanup(scope)
     hub.tasks.startQueue()
+    hub.jobs.watch(scope)
     if (!hub.accounts.hasOwner()) {
         val code = hub.pairing.newCode(hub.accounts.ensureHub(config.hubName))
         println(Pairing.banner(config, code, ownerExists = false))
