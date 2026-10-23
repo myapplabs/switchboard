@@ -1,5 +1,6 @@
 package llc.applabs.switchboard.ui.chat
 
+import llc.applabs.switchboard.domain.HubException
 import llc.applabs.switchboard.domain.model.Attachment
 import llc.applabs.switchboard.domain.model.PickedFile
 import androidx.lifecycle.ViewModel
@@ -143,8 +144,15 @@ class ChatViewModel(
         val result = runCatching { chat.uploadAttachment(sessionId, picked) }
         bytesCache.putAll(result.getOrNull()?.let { mapOf(it.id to picked.bytes) }.orEmpty())
         _state.update { st -> st.copy(pending = st.pending.map { p ->
-            if (p.localId != local.localId) p else result.fold({ p.copy(attachment = it) }, { p.copy(error = (it as? Exception)?.friendly() ?: "Upload failed") })
+            if (p.localId != local.localId) p else result.fold({ p.copy(attachment = it) }, { p.copy(error = uploadError(it)) })
         }) }
+    }
+
+    /** Why an upload failed, in words; a hub older than 0.3.6 has no place for files at all. */
+    private fun uploadError(e: Throwable): String = when {
+        e is HubException && e.status == 404 -> "Your hub can't take files yet. Update it to 0.3.6 or later."
+        e is Exception -> e.friendly()
+        else -> "Couldn't add this file."
     }
 
     /** Take a file off the next message (and off the hub, if it got there). */

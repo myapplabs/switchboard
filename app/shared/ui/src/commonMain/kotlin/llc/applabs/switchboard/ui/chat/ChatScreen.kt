@@ -370,7 +370,12 @@ private fun Composer(s: ChatUiState, onInput: (String) -> Unit, onSend: () -> Un
             }
             OutlinedTextField(s.input, onInput, modifier = Modifier.weight(1f).testTag("composer"), maxLines = 5, enabled = !s.running || s.canSteer,
                 shape = RoundedCornerShape(24.dp),
-                placeholder = { Text(if (s.running) (if (s.canSteer) "Add guidance…" else "Working…") else "Message ${s.agent?.name ?: ""}", maxLines = 1) })
+                placeholder = { Text(when {
+                    s.running -> if (s.canSteer) "Add guidance…" else "Working…"
+                    // Files added: say that the instructions go with them, in this same message.
+                    s.pending.isNotEmpty() -> "What should ${s.agent?.name ?: "the agent"} do with " + (if (s.pending.size == 1) "it?" else "them?")
+                    else -> "Message ${s.agent?.name ?: ""}"
+                }, maxLines = 1) })
             when {
                 s.running && !(s.canSteer && s.input.isNotBlank()) ->
                     FilledTonalIconButton(onClick = onStop, modifier = Modifier.testTag("stop")) { Icon(AppIcons.Stop, contentDescription = "Stop") }
