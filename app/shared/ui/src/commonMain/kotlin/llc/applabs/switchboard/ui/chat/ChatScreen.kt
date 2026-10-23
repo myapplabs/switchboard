@@ -1,5 +1,8 @@
 package llc.applabs.switchboard.ui.chat
 
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
 import org.jetbrains.compose.resources.decodeToImageBitmap
@@ -92,7 +95,25 @@ fun ChatScreen(viewModel: ChatViewModel, myUserId: String, onBack: () -> Unit,
     val list = rememberLazyListState()
     LaunchedEffect(Unit) { viewModel.effects.collect { if (it is ChatUiEffect.Toast) snackbar.showSnackbar(it.text) } }
     LaunchedEffect(s.deleted) { if (s.deleted) onBack() }
-    LaunchedEffect(s.messages.size, s.messages.lastOrNull()?.text?.length) { if (s.messages.isNotEmpty()) list.animateScrollToItem(s.messages.size - 1) }
+    // Always to the very end of the newest message (a long answer included): straight there when the chat opens,
+    // smoothly as answers stream in.
+    var opened by remember { mutableStateOf(false) }
+    val lastIndex = s.messages.size - 1 + (if (s.running) 1 else 0)   // the run's status line comes last while it runs
+    val currentLast by rememberUpdatedState(lastIndex)
+    LaunchedEffect(s.messages.size, s.messages.lastOrNull()?.text?.length, s.running) {
+        if (s.messages.isEmpty()) return@LaunchedEffect
+        if (!opened) { list.scrollToItem(lastIndex, Int.MAX_VALUE); opened = true }
+        else list.animateScrollToItem(lastIndex, Int.MAX_VALUE)
+    }
+    // When the list gets shorter or taller (the keyboard opening or closing), stay at the end if you were there.
+    LaunchedEffect(list) {
+        var height = 0
+        var atEnd = true
+        snapshotFlow { list.layoutInfo.viewportSize.height to !list.canScrollForward }.collect { (h, end) ->
+            if (h != height && height != 0 && atEnd && currentLast >= 0) list.scrollToItem(currentLast, Int.MAX_VALUE) else atEnd = end
+            height = h
+        }
+    }
     val owner = s.session?.ownerUserId == myUserId
 
     Scaffold(
@@ -127,7 +148,8 @@ fun ChatScreen(viewModel: ChatViewModel, myUserId: String, onBack: () -> Unit,
             )
         },
     ) { pad ->
-        Column(Modifier.padding(pad).fillMaxSize().imePadding()) {
+        // The keyboard's space replaces the bottom inset already in [pad], instead of adding to it.
+        Column(Modifier.padding(pad).consumeWindowInsets(pad).fillMaxSize().imePadding()) {
             if (s.loading && s.session == null) { Loading(Modifier.weight(1f)); return@Column }
             LazyColumn(state = list, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {

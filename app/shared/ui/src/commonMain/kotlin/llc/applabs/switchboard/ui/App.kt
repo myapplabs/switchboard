@@ -1,5 +1,7 @@
 package llc.applabs.switchboard.ui
 
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -122,7 +124,10 @@ private fun Main(deps: AppDependencies, me: Me, hubUrl: String, openSession: Str
     Scaffold(bottomBar = {
         if (route in tabs.map { it.first }) TabBar(tabs, route) { r -> nav.navigate(r) { popUpTo(Routes.AGENTS); launchSingleTop = true } }
     }) { pad ->
-        NavHost(nav, startDestination = Routes.AGENTS, modifier = Modifier.padding(bottom = pad.calculateBottomPadding())) {
+        // Screens get the space above the tab bar (or the system bar), already accounted for: their own Scaffolds
+        // and the chat's keyboard padding don't add it again.
+        NavHost(nav, startDestination = Routes.AGENTS, modifier = Modifier.padding(bottom = pad.calculateBottomPadding())
+            .consumeWindowInsets(PaddingValues(bottom = pad.calculateBottomPadding()))) {
             composable(Routes.AGENTS) {
                 val vm = viewModel { AgentsViewModel(deps.agents, deps.chat, deps.live, deps.control) }
                 AgentsScreen(vm, me.hub.name, me.permissions.manageAgents, me.permissions.manageMembers, onOpenChat = { nav.navigate(Routes.chat(it)) },
