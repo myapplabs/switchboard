@@ -112,6 +112,7 @@ class JobsViewModel(private val agents: AgentsRepository, private val control: C
 
     /** Start (or redo) an agent's setup; watches until the agent connects. */
     fun connect(agentId: String) = viewModelScope.launch {
+        if (_state.value.setup?.first == agentId) return@launch   // already showing a command: keep it
         try {
             val setup = control.relaySetup(agentId)
             _state.update { it.copy(setup = agentId to setup) }

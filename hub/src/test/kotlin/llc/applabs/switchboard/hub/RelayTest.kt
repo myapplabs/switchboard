@@ -179,6 +179,19 @@ class RelayTest {
         assertEquals("off", call("get", "/v1/agents/$agentId/relay").json().str("status"))
     }
 
+    @Test fun `a second code doesn't cancel the first - each works once, until it expires`() = app {
+        val first = call("post", "/v1/agents/$agentId/relay/setup").json().str("code")
+        val second = call("post", "/v1/agents/$agentId/relay/setup").json().str("code")
+        assertEquals("waiting", call("get", "/v1/agents/$agentId/relay").json().str("status"))
+        assertEquals(HttpStatusCode.OK, client.get("/relay/setup/$first") { header("Host", "hub.example") }.status, "the earlier code still works")
+        assertEquals(HttpStatusCode.NotFound, client.get("/relay/setup/$first") { header("Host", "hub.example") }.status, "once")
+        assertEquals(HttpStatusCode.OK, client.get("/relay/setup/${second.lowercase()}") { header("Host", "hub.example") }.status, "typed in lower case")
+        db.update("UPDATE relay_setup_code SET expires_at = ?", "2000-01-01T00:00:00Z")
+        val third = call("post", "/v1/agents/$agentId/relay/setup").json().str("code")
+        db.update("UPDATE relay_setup_code SET expires_at = ? WHERE agent_id = ?", "2000-01-01T00:00:00Z", agentId)
+        assertEquals(HttpStatusCode.NotFound, client.get("/relay/setup/$third") { header("Host", "hub.example") }.status, "expired")
+    }
+
     @Test fun `the setup script stays plain - only a host's characters reach it`() {
         assertNull(Relay.safeHubUrl("https", "evil.com'; rm -rf ~; '"))
         assertEquals("http://127.0.0.1:8780", Relay.safeHubUrl("http", "127.0.0.1:8780"))
