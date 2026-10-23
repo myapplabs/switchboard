@@ -52,6 +52,8 @@ data class RunRequest(
     val model: String? = null,
     /** Same value for a retried request, so the agent does not start the run twice. */
     val idempotencyKey: String,
+    /** Photos sent with the message, as `data:image/...;base64,...` URLs (the agent sees them directly). */
+    val images: List<String> = emptyList(),
 )
 
 data class HistoryMessage(val role: String, val content: String)

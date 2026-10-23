@@ -1,5 +1,6 @@
 package llc.applabs.switchboard.ui
 
+import platform.Foundation.NSBundle
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.window.ComposeUIViewController
 import kotlin.coroutines.resume
@@ -54,6 +55,7 @@ fun openInviteLink(url: String) { inviteLink.value = url }
 
 /** Entry point used by iosApp/iosApp/ContentView.swift. */
 fun MainViewController(platform: IosPlatform, devSignIn: Boolean): UIViewController {
-    val container = AppContainer(IosPasskeys(platform), KeychainStore(platform), devSignIn, platform.deviceName)
+    val container = AppContainer(IosPasskeys(platform), KeychainStore(platform), devSignIn, platform.deviceName,
+        appVersion = (NSBundle.mainBundle.objectForInfoDictionaryKey("CFBundleShortVersionString") as? String).orEmpty())
     return ComposeUIViewController { App(deps = container, inviteLink = inviteLink.value) }
 }

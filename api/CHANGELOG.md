@@ -26,6 +26,12 @@ M5, the task board (spec "Task board: agents working together"). Additive.
   `job_result`; notification kind `job_finished` (`session_id`, `agent_id`, `job_id`); error `relay_not_set_up`.
 - `POST /agents/{id}/jobs/{job_id}/result` (`at` optional): a conversation in which the agent shows a run's saved
   result, without the relay and whatever the job's delivery; error `no_runs`.
+- `DELETE /me`: delete my account from the app (both app stores require it). A member's own data goes; the owner
+  deletes the whole hub, confirmed with `confirm` (the hub's name). Activity action `account_deleted`.
+- Files and photos in messages: `POST /sessions/{id}/attachments` (raw bytes, `X-Filename`), `GET` / `DELETE
+  /attachments/{id}`, `RunInput.attachments` (replaces the never-implemented `RunInput.images`; `text` may be empty when
+  files are sent), `Message.attachments`, schema `Attachment`. Outside `/v1`, `GET /files/{id}/{token}/{name}` is the
+  agent's download link (7 days).
 
 ## 0.3.0 — draft (2026-10-21)
 

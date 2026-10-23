@@ -225,6 +225,28 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Me" }
         "401": { $ref: "#/components/responses/Problem" }
+    delete:
+      tags: [me]
+      operationId: deleteMe
+      summary: Delete my account (app stores require deletion from inside the app)
+      description: >-
+        A member's account: their conversations (on the agents too), grants, quick commands, passkeys, devices,
+        notification tokens, shares, job-result deliveries and FORGE bridges are deleted, the account is disabled
+        and its name becomes "Deleted member"; activity action `account_deleted`. The owner's account can't exist
+        without the hub, so the owner deletes everything on the hub, confirming with the hub's name (case and
+        surrounding spaces ignored); the hub then waits for a new owner (`switchboard-hub setup-code`).
+      x-release: v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                confirm: { type: string, description: "Owner only: the hub's name" }
+      responses:
+        "204": { description: Deleted; this device's tokens no longer work }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
 
   /me/events:
     get:
@@ -715,6 +737,59 @@ paths:
                 properties:
                   items: { type: array, items: { $ref: "#/components/schemas/Message" } }
                   next_cursor: { type: [string, "null"] }
+
+  /sessions/{session_id}/attachments:
+    post:
+      tags: [conversations]
+      operationId: uploadAttachment
+      summary: Add a file or photo for the next message
+      description: >-
+        The raw bytes (up to 25 MB), with `Content-Type` and the file name in `X-Filename` (URL-encoded). Send it by
+        naming its id in the next run's `attachments`; unsent files are deleted after a day. Files are deleted with
+        their conversation.
+      x-release: v1
+      parameters:
+        - { name: session_id, in: path, required: true, schema: { type: string } }
+        - { name: X-Filename, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "201":
+          description: Added
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Attachment" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "413": { $ref: "#/components/responses/Problem" }
+
+  /attachments/{attachment_id}:
+    get:
+      tags: [conversations]
+      operationId: downloadAttachment
+      summary: A file's bytes (people who can see its conversation)
+      x-release: v1
+      parameters:
+        - { name: attachment_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The file, as an attachment download
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "404": { $ref: "#/components/responses/Problem" }
+    delete:
+      tags: [conversations]
+      operationId: removeAttachment
+      summary: Remove a file you added but haven't sent
+      x-release: v1
+      parameters:
+        - { name: attachment_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Removed }
+        "404": { $ref: "#/components/responses/Problem" }
 
   /sessions/{session_id}/runs:
     post:
@@ -1856,6 +1931,10 @@ components:
       required: [id, role, created_at]
       properties:
         id: { type: string }
+        attachments:
+          type: array
+          description: Files and photos sent with a person's message
+          items: { $ref: "#/components/schemas/Attachment" }
         role: { type: string, enum: [user, assistant] }
         kind:
           type: string
@@ -1888,14 +1967,27 @@ components:
 
     RunInput:
       type: object
-      required: [text]
+      description: Text, files, or both.
       properties:
-        text: { type: string, minLength: 1, maxLength: 100000 }
-        images:
+        text: { type: string, maxLength: 100000 }
+        attachments:
           type: array
-          maxItems: 4
-          items: { type: string, description: "data:image/...;base64 URL (only when capabilities.images)" }
+          maxItems: 10
+          description: >-
+            Ids of files added to this conversation first (`POST /sessions/{id}/attachments`), sent with this message.
+            Photos (JPEG, PNG, WebP, GIF; up to 5 MB together) also reach the agent inline; every file gets a
+            download link for the agent, valid 7 days.
+          items: { type: string }
         model_id: { type: string, description: 'Overrides the session''s model for this turn (must be granted)' }
+
+    Attachment:
+      type: object
+      required: [id, name, content_type, size]
+      properties:
+        id: { type: string }
+        name: { type: string, description: "File name, without folders, at most 120 characters" }
+        content_type: { type: string }
+        size: { type: integer, description: Bytes }
 
     RunStatus:
       type: string
@@ -2042,7 +2134,7 @@ components:
         action:
           type: string
           description: Open enum
-          enum: [run_started, approval_decided, member_joined, member_removed, role_changed, grants_changed,
+          enum: [run_started, approval_decided, member_joined, member_removed, account_deleted, role_changed, grants_changed,
                  agent_added, agent_changed, agent_removed, job_changed, invite_created, device_revoked,
                  agent_described, task_created, task_reviewed, task_deleted,
                  forge_bridge_created, forge_bridge_revoked, forge_ticket_started, forge_decided]

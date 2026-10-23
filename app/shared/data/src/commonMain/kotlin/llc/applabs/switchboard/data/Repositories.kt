@@ -29,6 +29,8 @@ import llc.applabs.switchboard.domain.AuthState
 import llc.applabs.switchboard.domain.ChatRepository
 import llc.applabs.switchboard.domain.ControlRepository
 import llc.applabs.switchboard.domain.model.Approval
+import llc.applabs.switchboard.domain.model.Attachment
+import llc.applabs.switchboard.domain.model.PickedFile
 import llc.applabs.switchboard.domain.model.JobResultOpened
 import llc.applabs.switchboard.domain.model.RelaySetup
 import llc.applabs.switchboard.domain.model.RelayStatus
@@ -160,6 +162,12 @@ class AuthRepositoryImpl(private val client: HubClient, private val passkeys: Pa
         _state.value = AuthState.SignedOut(tokens.hubUrl)
     }
 
+    override suspend fun deleteAccount(confirmHubName: String?) {
+        client.call<Unit>(HttpMethod.Delete, "/me", buildJsonObject { confirmHubName?.let { put("confirm", it) } })
+        tokens.clearSession()
+        _state.value = AuthState.SignedOut(tokens.hubUrl)
+    }
+
     /** The hub revoked this account or device. */
     fun revoked() { tokens.clearSession(); _state.value = AuthState.SignedOut(tokens.hubUrl) }
 }
@@ -214,7 +222,15 @@ class ChatRepositoryImpl(private val client: HubClient, private val retryDelaysM
         client.call(HttpMethod.Patch, "/sessions/$id", buildJsonObject { put("shared_with", client.json.encodeToJsonElement(ShareTarget.serializer(), target)) })
     override suspend fun delete(id: String) = client.call<Unit>(HttpMethod.Delete, "/sessions/$id")
     override suspend fun messages(id: String): List<Message> = client.call<Page<Message>>(HttpMethod.Get, "/sessions/$id/messages?limit=100").items
-    override suspend fun send(sessionId: String, text: String): Run = client.call(HttpMethod.Post, "/sessions/$sessionId/runs", buildJsonObject { put("text", text) })
+    override suspend fun send(sessionId: String, text: String, attachmentIds: List<String>): Run =
+        client.call(HttpMethod.Post, "/sessions/$sessionId/runs", buildJsonObject {
+            put("text", text)
+            if (attachmentIds.isNotEmpty()) put("attachments", kotlinx.serialization.json.JsonArray(attachmentIds.map(::JsonPrimitive)))
+        })
+    override suspend fun uploadAttachment(sessionId: String, file: PickedFile): Attachment =
+        client.json.decodeFromString(Attachment.serializer(), client.upload("/sessions/$sessionId/attachments", file.name, file.contentType, file.bytes))
+    override suspend fun removeAttachment(attachmentId: String) = client.call<Unit>(HttpMethod.Delete, "/attachments/$attachmentId")
+    override suspend fun attachmentBytes(attachmentId: String): ByteArray = client.download("/attachments/$attachmentId")
     override suspend fun stop(runId: String) = client.call<Unit>(HttpMethod.Post, "/runs/$runId/stop", "{}")
     override suspend fun answer(runId: String, clarificationId: String, answer: JsonElement) =
         client.call<Unit>(HttpMethod.Post, "/runs/$runId/clarifications/$clarificationId", buildJsonObject { put("answer", answer) })

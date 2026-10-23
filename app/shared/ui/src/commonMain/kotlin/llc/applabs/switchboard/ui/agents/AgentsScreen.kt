@@ -168,7 +168,8 @@ private fun AgentCard(a: Agent, starting: Boolean, onClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 MonoChip(a.type)
-                a.host?.let { MonoChip(it) }
+                // An agent on the hub's own computer has a loopback address; say so instead.
+                a.host?.let { MonoChip(if (it == "localhost" || it.startsWith("127.") || it == "::1" || it == "[::1]") "on the hub" else it) }
                 a.currentModel?.let { MonoChip(it) }
                 if (a.capabilities.jobs && a.jobCount != null) MonoChip("${a.jobCount} jobs")
             }
@@ -181,7 +182,7 @@ private fun AgentCard(a: Agent, starting: Boolean, onClick: () -> Unit) {
 fun AddAgentScreen(viewModel: AddAgentViewModel, onDone: () -> Unit) {
     val s by viewModel.state.collectAsState()
     LaunchedEffect(s.added) { if (s.added) onDone() }
-    Scaffold(topBar = { TopAppBar(title = { Text("Add agent") }, navigationIcon = { TextButton(onClick = onDone) { Text("Back") } }) }) { pad ->
+    Scaffold(topBar = { TopAppBar(title = { Text("Add agent") }) }) { pad ->
         Column(Modifier.padding(pad).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Hermes Agent with its API server enabled (API_SERVER_KEY in the profile's .env).", color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(s.name, viewModel::name, label = { Text("Name") }, placeholder = { Text("mini-1") }, singleLine = true, modifier = Modifier.fillMaxWidth())

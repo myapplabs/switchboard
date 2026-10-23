@@ -286,7 +286,23 @@ data class Message(
     val clarifications: List<Clarification> = emptyList(),
     @SerialName("model_label") val modelLabel: String? = null,
     @SerialName("created_at") val createdAt: String,
+    /** Files and photos sent with a person's message. */
+    val attachments: List<Attachment> = emptyList(),
 )
+
+/** A file or photo on the hub, sent (or about to be sent) with a message. */
+@Serializable
+data class Attachment(
+    val id: String,
+    val name: String,
+    @SerialName("content_type") val contentType: String,
+    val size: Long,
+) {
+    val isImage get() = contentType.startsWith("image/")
+}
+
+/** A file or photo picked on this device, ready to upload. */
+class PickedFile(val name: String, val contentType: String, val bytes: ByteArray)
 
 @Serializable
 data class Page<T>(val items: List<T>, @SerialName("next_cursor") val nextCursor: String? = null)

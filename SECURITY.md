@@ -23,6 +23,9 @@ Please report security problems privately: in this repository, open the **Securi
 - **Notifications:** carry no content, only that something is waiting.
 - **Job results:** an agent connects to the hub's relay with its own key (set up with a one-time command)
   and can only post into its own jobs' conversations, nothing else.
+- **Files in messages:** kept in the hub's data folder, readable only by the hub's account, and deleted with their
+  conversation. The agent gets a private download link per file that works for 7 days; anyone holding that link
+  can download the file until then, so agents shouldn't post those links anywhere public.
 - **Downloads:** releases are signed, and the installer checks the signature before installing.
 
 ## What it can't control
@@ -81,7 +84,7 @@ The agent's own account needs Docker to create the sandbox, but its tools run in
 Docker or anything you didn't list. Give your own, unsandboxed profile only to yourself.
 
 Also:
-- Use the **restricted** role for people who should never approve risky actions (for example, children or
+- Use the **restricted** role for people who should never approve risky actions (for example,
   guests). Restricted grants must name a profile.
 - Set **daily limits** and **allowed models** per person, to keep costs in check.
 - Review **Members → Activity** now and then: who used which agent and model, and who approved what.

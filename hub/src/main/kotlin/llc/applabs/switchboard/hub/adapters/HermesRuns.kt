@@ -51,7 +51,18 @@ class HermesRuns(private val http: HttpClient) : AgentRuns {
 
     override suspend fun startRun(target: ProfileTarget, request: RunRequest): String {
         val body = buildJsonObject {
-            put("input", request.input)
+            // With photos: one user message of text and image parts (Hermes passes images to the model, or has
+            // them described for a model that can't see); /v1/runs reads the last message's content.
+            if (request.images.isEmpty()) put("input", request.input)
+            else put("input", buildJsonArray {
+                add(buildJsonObject {
+                    put("role", "user")
+                    put("content", buildJsonArray {
+                        add(buildJsonObject { put("type", "text"); put("text", request.input) })
+                        request.images.forEach { url -> add(buildJsonObject { put("type", "image_url"); put("image_url", buildJsonObject { put("url", url) }) }) }
+                    })
+                })
+            })
             put("session_id", request.agentSessionId)
             // The hub's model ids are `provider::model` (from /api/model/options); /v1/runs takes them as two
             // fields — only the sessions API splits the prefixed form itself (checked in 0.21.1's source).

@@ -1,5 +1,7 @@
 package llc.applabs.switchboard.domain
 
+import llc.applabs.switchboard.domain.model.PickedFile
+
 /**
  * Everything the UI needs from the data layer, as domain interfaces.
  *
@@ -23,4 +25,12 @@ interface AppDependencies {
     val deviceName: String
     /** Scans a QR code with the camera and returns its text (null: cancelled); null where scanning isn't available. */
     val scanQr: (suspend () -> String?)? get() = null
+    /** Picks a photo (made small enough to send); null result: cancelled. Null where picking isn't available. */
+    val pickPhoto: (suspend () -> PickedFile?)? get() = null
+    /** Picks any file; null result: cancelled. Null where picking isn't available. */
+    val pickFile: (suspend () -> PickedFile?)? get() = null
+    /** Opens a downloaded file in another app (a viewer); null where that isn't available. */
+    val openFile: ((name: String, contentType: String, bytes: ByteArray) -> Unit)? get() = null
+    /** This app's version, as people see it (e.g. "0.3.4"); empty where unknown. */
+    val appVersion: String get() = ""
 }

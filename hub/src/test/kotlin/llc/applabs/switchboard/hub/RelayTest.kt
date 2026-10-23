@@ -199,6 +199,14 @@ class RelayTest {
         assertTrue("chmod 600" in s && "umask 077" in s)
     }
 
+    @Test fun `a result loses Hermes's chat wrapper, and nothing else`() {
+        val wrapped = "Cronjob Response: Sumner Pulse\n(job_id: 24471ee9a93b)\n-------------\n\n**Brief**\n\nAll quiet.\n\n" +
+            "To stop or manage this job, send me a new message (e.g. \"stop reminder Sumner Pulse\")."
+        assertEquals("**Brief**\n\nAll quiet.", Relay.unwrap(wrapped))
+        assertEquals("Plain result", Relay.unwrap("Plain result"))
+        assertEquals("Cronjob Response: x", Relay.unwrap("Cronjob Response: x"), "only the whole header shape")
+    }
+
     @Test fun `the setup script keeps Telegram on and finds hermes when it's not on PATH`() {
         val home = kotlin.io.path.createTempDirectory("relay-home").toFile()
         try {

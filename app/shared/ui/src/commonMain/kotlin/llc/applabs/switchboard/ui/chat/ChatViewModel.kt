@@ -1,5 +1,7 @@
 package llc.applabs.switchboard.ui.chat
 
+import llc.applabs.switchboard.domain.model.Attachment
+import llc.applabs.switchboard.domain.model.PickedFile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
@@ -42,7 +44,11 @@ data class ChatMessage(
     val questions: List<Question> = emptyList(),
     val approvals: List<ApprovalCard> = emptyList(),
     val modelLabel: String? = null,
+    val attachments: List<Attachment> = emptyList(),
 )
+
+/** A file or photo added to the next message: uploading until [attachment] is set (or [error]). */
+data class PendingFile(val localId: Int, val name: String, val isImage: Boolean, val attachment: Attachment? = null, val error: String? = null)
 
 data class Question(val clarification: Clarification, val canAnswer: Boolean)
 
@@ -62,7 +68,12 @@ data class ChatUiState(
     val sending: Boolean = false,
     val error: String? = null,
     val deleted: Boolean = false,
+    /** Files and photos for the next message. */
+    val pending: List<PendingFile> = emptyList(),
 ) {
+    val uploading get() = pending.any { it.attachment == null && it.error == null }
+    /** There's something to send: text, or files that finished uploading (and none still uploading). */
+    val canSend get() = (input.isNotBlank() || pending.any { it.attachment != null }) && !uploading
     val running get() = runId != null
     val canSteer get() = running && agent?.capabilities?.steer == true
 }
@@ -121,17 +132,49 @@ class ChatViewModel(
 
     fun onInput(text: String) = _state.update { it.copy(input = text) }
 
+    private var nextLocalId = 0
+    private val bytesCache = mutableMapOf<String, ByteArray>()
+
+    /** Pick a file or photo with [picker] and upload it for the next message. */
+    fun addFile(picker: suspend () -> PickedFile?) = viewModelScope.launch {
+        val picked = try { picker() } catch (e: Exception) { _effects.send(ChatUiEffect.Toast(e.message ?: e.friendly())); null } ?: return@launch
+        val local = PendingFile(nextLocalId++, picked.name, picked.contentType.startsWith("image/"))
+        _state.update { it.copy(pending = it.pending + local) }
+        val result = runCatching { chat.uploadAttachment(sessionId, picked) }
+        bytesCache.putAll(result.getOrNull()?.let { mapOf(it.id to picked.bytes) }.orEmpty())
+        _state.update { st -> st.copy(pending = st.pending.map { p ->
+            if (p.localId != local.localId) p else result.fold({ p.copy(attachment = it) }, { p.copy(error = (it as? Exception)?.friendly() ?: "Upload failed") })
+        }) }
+    }
+
+    /** Take a file off the next message (and off the hub, if it got there). */
+    fun removePending(localId: Int) {
+        val p = _state.value.pending.firstOrNull { it.localId == localId } ?: return
+        _state.update { st -> st.copy(pending = st.pending.filterNot { it.localId == localId }) }
+        p.attachment?.let { a -> viewModelScope.launch { runCatching { chat.removeAttachment(a.id) } } }
+    }
+
+    /** An attachment's bytes (kept while the conversation is open). */
+    suspend fun attachmentBytes(id: String): ByteArray = bytesCache[id] ?: chat.attachmentBytes(id).also { bytesCache[id] = it }
+
+    /** Download [a] and hand it to [open] (another app shows it). */
+    fun openAttachment(a: Attachment, open: (String, String, ByteArray) -> Unit) = viewModelScope.launch {
+        try { open(a.name, a.contentType, attachmentBytes(a.id)) } catch (e: Exception) { _effects.send(ChatUiEffect.Toast(e.friendly())) }
+    }
+
     fun send() {
         val s = _state.value
         val text = s.input.trim()
-        if (text.isEmpty() || s.sending) return
-        if (s.running) { if (s.canSteer) steer(text); return }
+        if (!s.canSend || s.sending) return
+        if (s.running) { if (s.canSteer && text.isNotEmpty()) steer(text); return }
+        val files = s.pending.mapNotNull { it.attachment }
         viewModelScope.launch {
             _state.update { it.copy(sending = true, error = null) }
             try {
-                val run = chat.send(sessionId, text)
+                val run = chat.send(sessionId, text, files.map { it.id })
                 _state.update { st ->
-                    st.copy(input = "", messages = st.messages + ChatMessage("local-${run.id}", "user", text = text, authorUserId = myUserId) +
+                    st.copy(input = "", pending = emptyList(),
+                        messages = st.messages + ChatMessage("local-${run.id}", "user", text = text, authorUserId = myUserId, attachments = files) +
                         ChatMessage(run.messageId, "assistant", status = "partial", runId = run.id, modelLabel = run.modelLabel))
                 }
                 attach(run.id)
@@ -232,6 +275,7 @@ class ChatViewModel(
         fun toUi(m: Message) = ChatMessage(
             id = m.id, role = m.role, kind = m.kind, text = m.text, authorUserId = m.authorUserId, status = m.status, runId = m.runId,
             tools = m.toolCalls, questions = m.clarifications.map { Question(it, canAnswer = it.status == "pending") }, modelLabel = m.modelLabel,
+            attachments = m.attachments,
         )
 
         /** An answer as text (lists joined). */

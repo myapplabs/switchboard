@@ -51,7 +51,7 @@ class EventsAndStorageTest {
         val file = Files.createTempDirectory("hub").resolve("hub.db")
         Db.open(file).use { Accounts(it).ensureHub("Home") }
         Db.open(file).use { db ->
-            assertEquals(listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13), db.query("SELECT version FROM schema_version ORDER BY version") { it.getInt(1) })
+            assertEquals(listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14), db.query("SELECT version FROM schema_version ORDER BY version") { it.getInt(1) })
             assertEquals("Home", Accounts(db).hub()!!.second)
         }
     }

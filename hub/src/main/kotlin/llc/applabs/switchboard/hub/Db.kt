@@ -35,6 +35,15 @@ class Db private constructor(private val conn: Connection) : AutoCloseable {
         conn.prepareStatement(sql).use { st -> bind(st, args); st.executeUpdate() }
     }
 
+    /** Delete every row of every table (the schema stays), then compact the file so nothing lingers on disk. */
+    fun wipe() = synchronized(conn) {
+        val tables = query("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name != 'schema_version'") { it.getString(1) }
+        conn.createStatement().use { it.execute("PRAGMA foreign_keys = OFF") }
+        try { tx { c -> c.createStatement().use { st -> tables.forEach { st.execute("DELETE FROM \"$it\"") } } } }
+        finally { conn.createStatement().use { it.execute("PRAGMA foreign_keys = ON") } }
+        conn.createStatement().use { it.execute("VACUUM") }
+    }
+
     override fun close() = conn.close()
 
     companion object {
@@ -53,7 +62,7 @@ class Db private constructor(private val conn: Connection) : AutoCloseable {
         }
 
         /** Migration files in order; add new ones at the end, never edit an applied one. */
-        val MIGRATIONS = listOf("V001__init.sql", "V002__passkeys.sql", "V003__conversations.sql", "V004__household.sql", "V005__control.sql", "V006__push.sql", "V007__hub_names.sql", "V008__tasks.sql", "V009__coordinator.sql", "V010__forge_bridges.sql", "V011__job_runs.sql", "V012__relay.sql", "V013__relay_setup_codes.sql")
+        val MIGRATIONS = listOf("V001__init.sql", "V002__passkeys.sql", "V003__conversations.sql", "V004__household.sql", "V005__control.sql", "V006__push.sql", "V007__hub_names.sql", "V008__tasks.sql", "V009__coordinator.sql", "V010__forge_bridges.sql", "V011__job_runs.sql", "V012__relay.sql", "V013__relay_setup_codes.sql", "V014__attachments.sql")
 
         internal fun bind(st: PreparedStatement, args: Array<out Any?>) {
             args.forEachIndexed { i, a ->

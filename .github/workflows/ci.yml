@@ -28,6 +28,12 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - run: python3 -m venv .venv && .venv/bin/pip install -q openapi-spec-validator==0.7.1 && .venv/bin/python scripts/validate.py
+  legal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - run: python3 legal/build_pages.py --check
   app-android:
     runs-on: ubuntu-24.04
     timeout-minutes: 45

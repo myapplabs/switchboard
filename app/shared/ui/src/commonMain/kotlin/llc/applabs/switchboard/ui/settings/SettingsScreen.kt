@@ -1,6 +1,23 @@
 package llc.applabs.switchboard.ui.settings
 
 import androidx.compose.foundation.clickable
+import llc.applabs.switchboard.domain.model.Roles
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -39,12 +56,19 @@ import llc.applabs.switchboard.domain.MembersRepository
 import llc.applabs.switchboard.domain.model.Device
 import llc.applabs.switchboard.domain.model.Me
 import llc.applabs.switchboard.ui.common.ErrorBanner
+import llc.applabs.switchboard.ui.common.MarkdownText
 import llc.applabs.switchboard.ui.common.MonoChip
 import llc.applabs.switchboard.ui.common.SectionLabel
 import llc.applabs.switchboard.ui.common.friendly
 import llc.applabs.switchboard.ui.common.shortTime
 
-data class SettingsUiState(val devices: List<Device> = emptyList(), val error: String? = null)
+data class SettingsUiState(
+    val devices: List<Device> = emptyList(),
+    val error: String? = null,
+    /** Deleting the account: in progress, and why it failed. */
+    val deleting: Boolean = false,
+    val deleteError: String? = null,
+)
 
 class SettingsViewModel(private val auth: AuthRepository, private val members: MembersRepository, private val push: PushRepository) : ViewModel() {
     private val _state = MutableStateFlow(SettingsUiState())
@@ -60,6 +84,15 @@ class SettingsViewModel(private val auth: AuthRepository, private val members: M
     }
     fun signOut() = viewModelScope.launch { auth.signOut() }
 
+    /** Delete this account (the owner: the whole hub, confirmed with its name); signs out when done. */
+    fun deleteAccount(confirmHubName: String?) = viewModelScope.launch {
+        _state.update { it.copy(deleting = true, deleteError = null) }
+        try { auth.deleteAccount(confirmHubName) }
+        catch (e: Exception) { _state.update { it.copy(deleteError = e.friendly()) } }
+        finally { _state.update { it.copy(deleting = false) } }
+    }
+    fun clearDeleteError() = _state.update { it.copy(deleteError = null) }
+
     fun setNotify(kind: String, on: Boolean) = viewModelScope.launch {
         try { push.setPreference(kind, on); load() } catch (e: Exception) { _state.update { it.copy(error = e.friendly()) } }
     }
@@ -71,7 +104,35 @@ private fun MoreRow(title: String, subtitle: String, tag: String, onClick: () ->
         Text(title, style = MaterialTheme.typography.bodyLarge)
         Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
-    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+}
+
+/** A More section that opens and closes; [summary] says what's inside while it's closed. */
+@Composable
+private fun Section(title: String, summary: String, tag: String, open: Boolean, onToggle: () -> Unit, content: @Composable () -> Unit) {
+    Column(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().clickable(onClickLabel = if (open) "Close" else "Open", onClick = onToggle)
+            .padding(vertical = 14.dp).testTag("section-$tag").semantics { stateDescription = if (open) "Open" else "Closed" },
+            verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleMedium)
+                if (!open) Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis)
+            }
+            Text(if (open) "−" else "+", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 12.dp).clearAndSetSemantics {})
+        }
+        AnimatedVisibility(open) { Column(Modifier.padding(bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) { content() } }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+    }
+}
+
+@Composable
+private fun Para(text: String) = Text(text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(bottom = 6.dp))
+
+@Composable
+private fun Link(label: String, url: String) {
+    val uri = LocalUriHandler.current
+    TextButton(onClick = { runCatching { uri.openUri(url) } }, contentPadding = PaddingValues(horizontal = 0.dp)) { Text(label) }
 }
 
 private fun notifyLabel(kind: String) = when (kind) {
@@ -86,58 +147,149 @@ private fun notifyLabel(kind: String) = when (kind) {
     else -> kind
 }
 
+const val GITHUB_URL = "https://github.com/myapplabs/switchboard"
+const val SITE_URL = "https://switchboard.applabs.llc"
+
+/** A legal document from the legal folder (Markdown), without its title (the section already shows it). */
+@Composable
+private fun LegalDocument(markdown: String) = SelectionContainer {
+    MarkdownText(markdown.lines().dropWhile { it.isBlank() || it.startsWith("# ") }.joinToString("\n"))
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel, me: Me, hubUrl: String, onMembers: (() -> Unit)? = null, onSpecialties: (() -> Unit)? = null,
-                   onForge: (() -> Unit)? = null) {
+                   onForge: (() -> Unit)? = null, appVersion: String = "") {
     val s by viewModel.state.collectAsState()
+    var open by rememberSaveable { mutableStateOf(setOf<String>()) }
+    val toggle = { key: String -> open = if (key in open) open - key else open + key }
+    val clipboard = LocalClipboardManager.current
+    var copied by remember { mutableStateOf(false) }
+    var deleting by remember { mutableStateOf(false) }
+    val thisDevice = s.devices.firstOrNull { it.thisDevice }
     Scaffold(topBar = { TopAppBar(title = { Text("More") }) }) { pad ->
-        LazyColumn(Modifier.padding(pad).fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (onMembers != null || onSpecialties != null || onForge != null) {
-                item { SectionLabel("Manage") }
-                onForge?.let { item { MoreRow("FORGE", "Your FORGE tickets on the board; decide FORGE's gates here", "more-forge", it) } }
-                onMembers?.let { item { MoreRow("Members", "Invite people, roles, agent access, activity", "more-members", it) } }
-                onSpecialties?.let { item { MoreRow("What agents are good at", "Descriptions and tags used when picking agents for cards", "more-specialties", it) } }
+        LazyColumn(Modifier.padding(pad).fillMaxSize().padding(horizontal = 16.dp)) {
+            if (onMembers != null || onSpecialties != null || onForge != null) item {
+                Section("Manage", listOfNotNull("FORGE".takeIf { onForge != null }, "Members".takeIf { onMembers != null },
+                    "What agents are good at".takeIf { onSpecialties != null }).joinToString(" · "), "manage", "manage" in open, { toggle("manage") }) {
+                    onForge?.let { MoreRow("FORGE", "Your FORGE tickets on the board; decide FORGE's gates here", "more-forge", it) }
+                    onMembers?.let { MoreRow("Members", "Invite people, roles, agent access, activity", "more-members", it) }
+                    onSpecialties?.let { MoreRow("What agents are good at", "Descriptions and tags used when picking agents for cards", "more-specialties", it) }
+                }
             }
-            item { SectionLabel("Account") }
             item {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(me.displayName, style = MaterialTheme.typography.titleMedium)
-                        Text(me.hub.name, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Section("Account", "${me.displayName} · ${me.hub.name}", "account", "account" in open, { toggle("account") }) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(me.displayName, style = MaterialTheme.typography.titleMedium)
+                            Text(me.hub.name, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        MonoChip(me.role.uppercase())
                     }
-                    MonoChip(me.role.uppercase())
-                }
-            }
-            item { SectionLabel("Hub") }
-            item { Text(hubUrl, style = MonoLabel) }
-            item { SectionLabel("Notifications on this device") }
-            val me = s.devices.firstOrNull { it.thisDevice }
-            if (me?.pushEnabled != true) item {
-                Text("Not connected yet. Notifications arrive through the Switchboard push service once it's set up for this hub; until then the app updates live while it's open.",
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            } else items(NotifyKinds.all, key = { it }) { kind ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(notifyLabel(kind), modifier = Modifier.weight(1f))
-                    Switch(me.notifyPrefs[kind] != false, { viewModel.setNotify(kind, it) })
-                }
-            }
-            item { SectionLabel("Signed-in devices") }
-            items(s.devices, key = { it.id }) { d ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(d.name + if (d.thisDevice) " (this device)" else "", style = MaterialTheme.typography.bodyMedium)
-                        Text("${d.platform} · ${d.lastUsedAt?.let { shortTime(it) } ?: "—"}", style = MonoLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    SectionLabel("Hub")
+                    Row(Modifier.fillMaxWidth().clickable(onClickLabel = "Copy the hub's address") { clipboard.setText(AnnotatedString(hubUrl)); copied = true }
+                        .padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(hubUrl, style = MonoLabel, modifier = Modifier.weight(1f))
+                        Text(if (copied) "Copied" else "Copy", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                     }
-                    if (!d.thisDevice) TextButton(onClick = { viewModel.removeDevice(d.id) }) { Text("Sign out") }
+                    TextButton(onClick = { deleting = true }, contentPadding = PaddingValues(horizontal = 0.dp),
+                        modifier = Modifier.testTag("delete-account")) {
+                        Text(if (me.role == Roles.OWNER) "Delete my account and this hub" else "Delete my account", color = MaterialTheme.colorScheme.error)
+                    }
                 }
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
-            s.error?.let { item { ErrorBanner(it, onRetry = { viewModel.load() }) } }
+            item {
+                val on = thisDevice?.let { d -> NotifyKinds.all.count { d.notifyPrefs[it] != false } }
+                Section("Notifications", if (thisDevice?.pushEnabled != true) "Not set up on this device" else "$on of ${NotifyKinds.all.size} on, on this device",
+                    "notifications", "notifications" in open, { toggle("notifications") }) {
+                    if (thisDevice?.pushEnabled != true) Text("Not connected yet. Notifications arrive through the Switchboard push service once it's set up for this hub; until then the app updates live while it's open.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    else NotifyKinds.all.forEach { kind ->
+                        Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(notifyLabel(kind), modifier = Modifier.weight(1f))
+                            Switch(thisDevice.notifyPrefs[kind] != false, { viewModel.setNotify(kind, it) })
+                        }
+                    }
+                }
+            }
+            item {
+                Section("Signed-in devices", if (s.devices.size == 1) "1 device" else "${s.devices.size} devices", "devices", "devices" in open, { toggle("devices") }) {
+                    s.devices.forEach { d ->
+                        Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(d.name + if (d.thisDevice) " (this device)" else "", style = MaterialTheme.typography.bodyMedium)
+                                Text("${d.platform} · last used ${d.lastUsedAt?.let { shortTime(it) } ?: "—"}", style = MonoLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            if (!d.thisDevice) TextButton(onClick = { viewModel.removeDevice(d.id) }) { Text("Sign out") }
+                        }
+                    }
+                }
+            }
+            item {
+                Section("About Switchboard", "What it is, the hub, and the source code", "about", "about" in open, { toggle("about") }) {
+                    Para("Switchboard puts your own AI agents in your pocket, and lets you share them safely with your family or team. Chat with them, approve what they want to do, follow their scheduled jobs, and hand them work on a shared board.")
+                    Para("Why: your agents run on your own computers, with your own keys and models. Switchboard keeps it that way. There's no Switchboard cloud in the middle, and you decide who may use which agent, with which models and limits.")
+                    Para("The hub is the small server this app connects to. You run it yourself, on a home computer, a mini PC or a virtual machine, and reach it privately over Tailscale. It keeps members, permissions and conversations, and talks to your agents for you.")
+                    Para("Switchboard is free and open source (Apache License 2.0), made by AppLabs.")
+                    Link("Source code on GitHub", GITHUB_URL)
+                    Link("Setup guide", "$GITHUB_URL/blob/main/docs/setup-guide.md")
+                    Link("Security", "$GITHUB_URL/blob/main/SECURITY.md")
+                }
+            }
+            item {
+                Section("Terms of use", "The agreement for using Switchboard", "terms", "terms" in open, { toggle("terms") }) {
+                    LegalDocument(LegalText.TERMS)
+                    Link("Open on the web", "$SITE_URL/terms.html")
+                }
+            }
+            item {
+                Section("Privacy policy", "Your data stays on your hub", "privacy", "privacy" in open, { toggle("privacy") }) {
+                    LegalDocument(LegalText.PRIVACY)
+                    Link("Open on the web", "$SITE_URL/privacy.html")
+                }
+            }
+            s.error?.let { item { ErrorBanner(it, onRetry = { viewModel.load() }, modifier = Modifier.padding(top = 12.dp)) } }
             item {
                 OutlinedButton(onClick = viewModel::signOut, modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp).testTag("sign-out")) { Text("Sign out") }
             }
-            item { Text("Switchboard 0.1.0", style = MonoLabel, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            item {
+                Text(listOf("Switchboard", appVersion).filter { it.isNotEmpty() }.joinToString(" "), style = MonoLabel,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 16.dp))
+            }
         }
     }
+    if (deleting) DeleteAccountDialog(me, s.deleting, s.deleteError,
+        onDelete = viewModel::deleteAccount, onDismiss = { deleting = false; viewModel.clearDeleteError() })
+}
+
+/** Confirms deleting the account. The owner's account can't exist without the hub, so it deletes the hub's data too. */
+@Composable
+private fun DeleteAccountDialog(me: Me, busy: Boolean, error: String?, onDelete: (String?) -> Unit, onDismiss: () -> Unit) {
+    val owner = me.role == Roles.OWNER
+    var typed by remember { mutableStateOf("") }
+    val confirmed = !owner || typed.trim().equals(me.hub.name.trim(), ignoreCase = true)
+    AlertDialog(onDismissRequest = { if (!busy) onDismiss() },
+        title = { Text(if (owner) "Delete your account and this hub?" else "Delete your account?") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (owner) {
+                    Text("You own ${me.hub.name}. Your account can't exist without the hub, so this deletes everything on it: every member's account and conversations, the agents you added and their keys, jobs, board cards and settings. The agents themselves keep running on their computers.")
+                    Text("This can't be undone. To use Switchboard again, set the hub up from the start.")
+                    OutlinedTextField(typed, { typed = it }, singleLine = true, label = { Text("Type \"${me.hub.name}\" to confirm") },
+                        modifier = Modifier.fillMaxWidth().testTag("delete-confirm"))
+                } else {
+                    Text("This deletes your account on ${me.hub.name}: your conversations (here and on the agents), your access to agents, your quick commands, and your sign-in on every device. Board cards you made stay, without your name.")
+                    Text("This can't be undone. To come back, you'd need a new invite.")
+                }
+                Text("Your passkey stays in your password manager. You can delete it there.", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onDelete(if (owner) typed else null) }, enabled = confirmed && !busy, modifier = Modifier.testTag("delete-account-confirm")) {
+                Text(if (busy) "Deleting…" else "Delete", color = if (confirmed && !busy) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text("Cancel") } })
 }

@@ -123,7 +123,7 @@ class AskAllViewModel(private val agents: AgentsRepository, private val chat: Ch
 @Composable
 fun AskAllScreen(viewModel: AskAllViewModel, onOpenChat: (String) -> Unit, onBack: () -> Unit) {
     val s by viewModel.state.collectAsState()
-    Scaffold(topBar = { TopAppBar(title = { Text("Ask all agents") }, navigationIcon = { TextButton(onClick = onBack) { Text("Back") } }) }) { pad ->
+    Scaffold(topBar = { TopAppBar(title = { Text("Ask all agents") }) }) { pad ->
         LazyColumn(Modifier.padding(pad).fillMaxSize().imePadding().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
