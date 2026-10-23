@@ -96,8 +96,8 @@ also get each run's **results** in a conversation, the way Telegram shows them:
 
 1. In the app (as the owner): **Jobs → Job results from <agent> → Connect**. The app shows one command.
 2. On that agent's computer, in a terminal, as the account Hermes runs as, run the command. It saves a key
-   for this agent only in Hermes's settings and restarts its gateway. The command works once, for 10
-   minutes. For a named Hermes profile, put `HERMES_HOME=~/.hermes/profiles/<name>` before `sh`.
+   for this agent only in Hermes's settings (and keeps Hermes's other chat platforms, like Telegram, on)
+   and restarts its gateway. The command works once, for 10 minutes. For a named Hermes profile, put `HERMES_HOME=~/.hermes/profiles/<name>` before `sh`.
 3. When the app says the agent is connected, turn on **Send results here** for the jobs you want. Results
    arrive in a conversation named after the job, with a notification. Reply there to ask about them.
 

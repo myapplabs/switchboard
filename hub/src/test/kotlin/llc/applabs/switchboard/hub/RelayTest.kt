@@ -199,5 +199,27 @@ class RelayTest {
         assertTrue("chmod 600" in s && "umask 077" in s)
     }
 
+    @Test fun `the setup script keeps Telegram on and finds hermes when it's not on PATH`() {
+        val home = kotlin.io.path.createTempDirectory("relay-home").toFile()
+        try {
+            java.io.File(home, ".hermes").mkdirs()
+            java.io.File(home, ".hermes/.env").writeText("TELEGRAM_BOT_TOKEN=x\nGATEWAY_RELAY_ID=old\n")
+            val bin = java.io.File(home, ".local/bin").apply { mkdirs() }
+            java.io.File(bin, "hermes").apply {
+                writeText("#!/bin/sh\necho \"${'$'}*\" > \"${'$'}HOME/restarted\"\n"); setExecutable(true)
+            }
+            val p = ProcessBuilder("sh", "-c", Relay.script("https://hub.example", "sb-new", "s3cr3t"))
+                .apply { environment()["HOME"] = home.path; environment()["PATH"] = "/usr/bin:/bin"; environment().remove("HERMES_HOME") }
+                .redirectErrorStream(true).start()
+            val out = p.inputStream.bufferedReader().readText()
+            assertEquals(0, p.waitFor(), out)
+            val env = java.io.File(home, ".hermes/.env").readLines()
+            assertTrue("TELEGRAM_BOT_TOKEN=x" in env && "GATEWAY_RELAY_ID=sb-new" in env, env.toString())
+            assertTrue("GATEWAY_RELAY_ALLOW_DIRECT_PLATFORMS=true" in env, env.toString())
+            assertEquals(1, env.count { it.startsWith("GATEWAY_RELAY_ID=") })
+            assertEquals("gateway restart", java.io.File(home, "restarted").readText().trim())
+        } finally { home.deleteRecursively() }
+    }
+
     private suspend fun ApplicationTestBuilder.post(path: String, body: String) = call("post", path, body)
 }
