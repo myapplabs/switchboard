@@ -246,7 +246,7 @@ fun Application.hubModule(hub: Hub) {
                     get { call.respond(hub.relay.status(call.user(), call.parameters["agent_id"]!!)) }
                     post("/setup") { call.respond(HttpStatusCode.Created, hub.relay.createSetup(call.user(), call.parameters["agent_id"]!!)) }
                     delete {
-                        hub.relay.remove(call.user(), call.parameters["agent_id"]!!)
+                        hub.jobs.disconnectRelay(call.user(), call.parameters["agent_id"]!!)
                         call.respond(HttpStatusCode.NoContent)
                     }
                 }

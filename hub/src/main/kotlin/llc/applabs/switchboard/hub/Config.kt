@@ -93,5 +93,5 @@ val SWITCHBOARD_APP_ORIGINS: List<String> = listOf(
 /** AppLabs' push relay for the official app (push-relay/); a hub's config can name another or none. */
 const val OFFICIAL_PUSH_RELAY = "https://switchboard-push-relay.vercel.app"
 
-const val HUB_VERSION = "0.3.0"
+const val HUB_VERSION = "0.3.1"
 const val API_VERSION = "1.0"

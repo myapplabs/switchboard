@@ -83,10 +83,21 @@ class Jobs(
         return changed(user, agent, "updated", out(agent.id, job, user))
     }
 
+    /** Forget [agentId]'s relay, switching its jobs back to their other targets first so they keep running. */
+    suspend fun disconnectRelay(user: HubUser, agentId: String) {
+        if (!user.isOwner) throw HubException.forbidden("Only the owner disconnects job results.")
+        val (agent, api, target) = context(user, agentId, manage = true)
+        for (job in api.jobs(target)) if (relay.delivery(agent.id, job.id) != null || job.deliver?.contains("relay:") == true)
+            relay.setDelivery(user, agent, api, target, job.id, job.name, job.deliver, false)
+        relay.remove(user, agentId)
+    }
+
     private suspend fun withResults(user: HubUser, agent: AgentRecord, api: AgentJobs, target: ProfileTarget, job: AgentJob, on: Boolean): AgentJob {
-        if (on && relay.statusOf(agent.id).status == "off")
+        // Until the agent's gateway has connected, Hermes doesn't know the relay and refuses to run a job
+        // that delivers there (blocked_config), so only a connected agent's jobs may be switched over.
+        if (on && relay.statusOf(agent.id).status != "connected")
             throw HubException(HttpStatusCode.Conflict, "relay_not_set_up", "Job results not connected",
-                "Connect job results for ${agent.name} first (Agents → ${agent.name} → Job results).")
+                "${agent.name} isn't connected for job results yet. Finish Connect in Jobs first (run the setup command on its computer).")
         val deliver = relay.setDelivery(user, agent, api, target, job.id, job.name, job.deliver, on)
         return job.copy(deliver = deliver)
     }
