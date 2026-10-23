@@ -68,12 +68,26 @@ val AppLightColorScheme = lightColorScheme(
     onSurface = Color(0xFF15181C),
     surfaceVariant = Color(0xFFECEDEF),
     onSurfaceVariant = Color(0xFF5B636E),
+    // Every surface role set, neutral grey: unset ones fall back to Material's lavender defaults.
+    surfaceTint = Color(0xFF9A5B00),
+    surfaceBright = Color.White,
+    surfaceDim = Color(0xFFDCDDE0),
+    surfaceContainerLowest = Color.White,
+    surfaceContainerLow = Color(0xFFF8F8F7),
     surfaceContainer = Color(0xFFF0F1F2),
     surfaceContainerHigh = Color(0xFFE8E9EB),
+    surfaceContainerHighest = Color.White,   // cards: white on the off-white ground, as on the Agents tab
+    tertiaryContainer = Color(0xFFD3E8FF),
+    onTertiaryContainer = Color(0xFF001D33),
+    inverseSurface = Color(0xFF2B2F35),
+    inverseOnSurface = Color(0xFFF0F1F2),
+    inversePrimary = Color(0xFFF5A524),
     outline = Color(0xFFC9CDD2),
     outlineVariant = Color(0xFFE0E2E5),
     error = Color(0xFFBA1A1A),
     onError = Color.White,
+    errorContainer = Color(0xFFFFDAD6),
+    onErrorContainer = Color(0xFF410002),
 )
 
 val AppTypography = AppLabsTypography
