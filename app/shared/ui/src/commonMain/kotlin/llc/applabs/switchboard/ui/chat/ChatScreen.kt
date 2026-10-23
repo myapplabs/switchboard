@@ -1,6 +1,5 @@
 package llc.applabs.switchboard.ui.chat
 
-import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.runtime.derivedStateOf
@@ -103,40 +102,35 @@ fun ChatScreen(viewModel: ChatViewModel, myUserId: String, onBack: () -> Unit,
     val list = rememberLazyListState()
     LaunchedEffect(Unit) { viewModel.effects.collect { if (it is ChatUiEffect.Toast) snackbar.showSnackbar(it.text) } }
     LaunchedEffect(s.deleted) { if (s.deleted) onBack() }
-    // Following the conversation: on while you're at the end (the list keeps up as answers stream in), off once you
-    // scroll up to read (nothing moves under you; a button takes you back down). Opening the chat or sending turns it on.
+    // The screen never moves under you while an answer streams in (following it made the screen jitter). It
+    // opens at the end; after you send, it scrolls once to your message and the start of the answer, which then
+    // grows below; when there's more below, a down-arrow button (with a dot while the agent is writing) takes you there.
     var opened by remember { mutableStateOf(false) }
-    var follow by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
     val lastIndex = s.messages.size - 1 + (if (s.running) 1 else 0)   // the run's status line comes last while it runs
     val currentLast by rememberUpdatedState(lastIndex)
-    LaunchedEffect(s.messages.size, s.messages.lastOrNull()?.text?.length, s.running) {
+    LaunchedEffect(s.messages.size) {
         if (s.messages.isEmpty()) return@LaunchedEffect
-        if (!opened) { list.scrollToItem(lastIndex, Int.MAX_VALUE); opened = true }
-        else if (follow) list.animateScrollToItem(lastIndex, Int.MAX_VALUE)
+        if (!opened) { list.scrollToItem(lastIndex, Int.MAX_VALUE); opened = true; return@LaunchedEffect }
+        // A new message: show the person's message (when it's theirs) with the answer starting under it.
+        val mineAt = s.messages.indexOfLast { it.role == "user" }
+        val target = if (mineAt >= 0 && mineAt >= s.messages.size - 2) mineAt else s.messages.size - 1
+        list.animateScrollToItem(target)
     }
-    // Only your own scrolling changes [follow]: where you leave the list decides it.
-    LaunchedEffect(list) {
-        var dragged = false
-        launch { list.interactionSource.interactions.collect { if (it is DragInteraction.Start) dragged = true } }
-        snapshotFlow { list.isScrollInProgress }.collect { scrolling ->
-            if (!scrolling && dragged) { dragged = false; follow = !list.canScrollForward }
-        }
-    }
-    // When the list gets shorter or taller (the keyboard opening or closing), stay at the end if you're following.
+    // When the list gets shorter or taller (the keyboard opening or closing), stay at the end if you were there.
     LaunchedEffect(list) {
         var height = 0
-        snapshotFlow { list.layoutInfo.viewportSize.height }.collect { h ->
-            if (h != height && height != 0 && follow && currentLast >= 0) list.scrollToItem(currentLast, Int.MAX_VALUE)
+        var atEnd = true
+        snapshotFlow { list.layoutInfo.viewportSize.height to !list.canScrollForward }.collect { (h, end) ->
+            if (h != height && height != 0 && atEnd && currentLast >= 0) list.scrollToItem(currentLast, Int.MAX_VALUE) else atEnd = end
             height = h
         }
     }
-    val showJump by remember { derivedStateOf { !follow && list.canScrollForward } }
+    val showJump by remember { derivedStateOf { list.canScrollForward } }
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
     val send = {
         keyboard?.hide(); focus.clearFocus()   // the answer gets the screen
-        follow = true
         viewModel.send()
     }
     val owner = s.session?.ownerUserId == myUserId
@@ -190,7 +184,7 @@ fun ChatScreen(viewModel: ChatViewModel, myUserId: String, onBack: () -> Unit,
             androidx.compose.animation.AnimatedVisibility(showJump, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
                 enter = androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.fadeOut()) {
                 BadgedBox(badge = { if (s.running) Badge() }) {
-                    FilledTonalIconButton(onClick = { follow = true; scope.launch { list.animateScrollToItem(currentLast.coerceAtLeast(0), Int.MAX_VALUE) } },
+                    FilledTonalIconButton(onClick = { scope.launch { list.animateScrollToItem(currentLast.coerceAtLeast(0), Int.MAX_VALUE) } },
                         modifier = Modifier.testTag("jump-to-latest")) {
                         Icon(AppIcons.Down, contentDescription = if (s.running) "New text below. Go to the latest" else "Go to the latest")
                     }
