@@ -28,6 +28,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -154,6 +157,22 @@ private fun JobCard(job: Job, agentName: String, manage: Boolean, onAction: (Str
             Text(listOfNotNull(job.nextRunAt?.takeIf { job.state != "paused" }?.let { "Next ${it.take(16).replace('T', ' ')} UTC" },
                 job.lastRunAt?.let { shortTime(it).let { t -> when { t == "now" -> "Last ran just now"; t.contains('-') -> "Last ran $t"; else -> "Last ran $t ago" } } }).joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            job.lastError?.takeIf { job.lastResult == "failure" }?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error, maxLines = 3)
+            }
+            if (job.recentRuns.size > 1) {
+                val ok = job.recentRuns.count { it.result == "success" }
+                val failed = job.recentRuns.count { it.result == "failure" }
+                Row(Modifier.semantics(mergeDescendants = true) {
+                    contentDescription = "Last ${job.recentRuns.size} runs: $ok succeeded" + if (failed > 0) ", $failed failed" else ""
+                }, horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Recent", style = MonoLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    // Oldest on the left, newest on the right, like a timeline.
+                    job.recentRuns.reversed().forEach { r ->
+                        StatusDot(when (r.result) { "success" -> StatusColors.online(); "failure" -> StatusColors.problem(); else -> StatusColors.offline() }, Modifier.size(8.dp))
+                    }
+                }
+            }
             if (manage) Row {
                 if (job.state == "paused") TextButton(onClick = { onAction("resume") }) { Text("Resume") } else TextButton(onClick = { onAction("pause") }) { Text("Pause") }
                 TextButton(onClick = { onAction("run") }) { Text(if (job.lastResult == "failure") "Retry now" else "Run now") }

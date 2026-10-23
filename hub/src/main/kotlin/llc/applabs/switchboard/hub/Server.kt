@@ -58,7 +58,7 @@ class Hub(
     val notifier = Notifier(db, config.pushRelayUrl, relayHttp, scope)
     val runs = Runs(db, conversations, agents, events, permissions, accounts, approvals, scope, retryDelaysMs = runRetryDelaysMs).also { it.notifier = notifier }
     val members = Members(db, accounts, events, config)
-    val jobs = Jobs(agents, permissions, accounts, events)
+    val jobs = Jobs(db, agents, permissions, accounts, events).also { it.notifier = notifier }
     val quickCommands = QuickCommands(db, agents)
     val pairing = Pairing(db, accounts)
     val passkeys = Passkeys(db, accounts, pairing, members, config)

@@ -427,7 +427,13 @@ data class Job(
     @SerialName("last_run_at") val lastRunAt: String? = null,
     @SerialName("last_result") val lastResult: String? = null,
     @SerialName("next_run_at") val nextRunAt: String? = null,
+    /** Contract 0.4.0: the failure message of the last run, and the runs the hub has recorded (newest first). */
+    @SerialName("last_error") val lastError: String? = null,
+    @SerialName("recent_runs") val recentRuns: List<JobRun> = emptyList(),
 )
+
+@Serializable
+data class JobRun(val at: String, val result: String? = null, val summary: String? = null)
 
 @Serializable
 data class JobInput(val name: String, val schedule: String, val prompt: String, val repeat: Int? = null)

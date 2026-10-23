@@ -1896,14 +1896,19 @@ components:
         last_run_at: { type: [string, "null"], format: date-time }
         last_result: { type: [string, "null"], enum: [success, failure, null] }
         next_run_at: { type: [string, "null"], format: date-time }
+        last_error: { type: [string, "null"], description: "The agent's message for a failed last run (0.4.0)" }
         recent_runs:
           type: array
+          description: |
+            Newest first, up to 10 (0.4.0). Agents keep only the last run, so the hub checks every minute
+            and records each new run; runs from before the hub first saw the job aren't listed.
           items:
             type: object
+            required: [at]
             properties:
               at: { type: string, format: date-time }
-              result: { type: string, enum: [success, failure] }
-              summary: { type: [string, "null"] }
+              result: { type: [string, "null"], enum: [success, failure, null] }
+              summary: { type: [string, "null"], description: "The error, for a failed run" }
 
     JobInput:
       type: object

@@ -99,6 +99,27 @@ class PushAndAskAllTest {
         assertEquals("true", patched.str("push_enabled"))
     }
 
+    @Test fun `job runs - recorded once, a failure notifies job managers, a first sighting doesn't`() = app {
+        post("/v1/devices", """{"platform":"android","push_token":"$pushToken","relay_grant":"g"}""")
+        assertEquals(emptyList(), hub.jobs.check(agentId), "first sighting: history only")
+        assertTrue(sent.none { it.str("kind") == "job_failed" }, "j2's old failure isn't news")
+        assertEquals(emptyList(), hub.jobs.check(agentId), "nothing new")
+        hermes.jobList[0] = hermes.jobList[0].replace("\"last_status\":\"ok\"", "\"last_status\":\"error\",\"last_error\":\"Model quota exceeded\"")
+            .replace("2026-10-20T06:12:17.46735", "2026-10-21T06:00:03.1")
+        val runs = hub.jobs.check(agentId)
+        assertEquals(1, runs.size)
+        assertEquals("failure" to "Model quota exceeded", runs[0].result to runs[0].summary)
+        waitFor("job_failed sent") { sent.any { it.str("kind") == "job_failed" } }
+        val n = sent.first { it.str("kind") == "job_failed" }
+        assertEquals(setOf("token", "grant", "kind", "hub", "agent_id", "job_id"), n.keys)
+        assertTrue("quota" !in n.toString(), "no content in a notice")
+        val job = client.get("/v1/agents/$agentId/jobs/j1") { bearerAuth(token) }.json()
+        assertEquals("Model quota exceeded", job.str("last_error"))
+        val recent = job["recent_runs"]!!.jsonArray.map { it.jsonObject }
+        assertEquals(listOf("failure", "success"), recent.map { it.str("result") }, "newest first, the first sighting kept")
+        assertEquals(emptyList(), hub.jobs.check(agentId), "recorded once")
+    }
+
     @Test fun `no relay configured means no push`() {
         val quiet = Notifier(db, null, relay, CoroutineScope(SupervisorJob()))
         quiet.notify(listOf("usr_x"), "run_finished", "hh_x")

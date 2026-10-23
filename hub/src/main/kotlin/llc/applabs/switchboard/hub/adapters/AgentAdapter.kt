@@ -121,6 +121,8 @@ data class AgentModel(val id: String, val label: String, val isPaid: Boolean, va
 data class AgentJob(
     val id: String, val name: String, val prompt: String?, val schedule: String, val state: String,
     val repeat: Int?, val lastRunAt: String?, val lastResult: String?, val nextRunAt: String?,
+    /** The agent's message for the last failed run, if it keeps one. */
+    val lastError: String? = null,
 )
 
 data class JobFields(val name: String? = null, val schedule: String? = null, val prompt: String? = null, val repeat: Int? = null)

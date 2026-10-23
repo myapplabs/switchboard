@@ -16,6 +16,9 @@ M5, the task board (spec "Task board: agents working together"). Additive.
   the bridge's `/forge/bridge/poll` and `/forge/bridge/results` (its own token). FORGE stays the system of record.
 - User events `task.changed`, `task.removed`; notification kinds `task_needs_you`, `task_review`; activity
   actions `agent_described`, `task_created`, `task_reviewed`, `task_deleted`.
+- Job run history: `Job.last_error`, and `Job.recent_runs` filled in (newest first, up to 10; `result` may be
+  null). The hub checks agents' jobs every minute and records each new run; a failed run sends `job_failed`
+  (with `agent_id`, `job_id`) to the people who manage the agent's jobs.
 
 ## 0.3.0 — draft (2026-10-21)
 
