@@ -216,7 +216,8 @@ See the [setup guide](docs/setup-guide.md#docker) for giving it its address with
   plan a bigger task into smaller ones; you approve its plan first.
 - **Jobs tab:** the agents' scheduled tasks, such as a daily summary. Pause, run now, edit or delete them.
   Each job shows when it last ran, whether its recent runs worked, and why the last one failed; you're
-  notified when a run fails. Turn on **Send results here** to get each run's results in a conversation,
+  notified when a run fails. **Show last result** opens a chat where the agent shows a run's result.
+  Turn on **Send results here** to get each run's results in a conversation,
   like a chat (set up once per agent; see the [setup guide](docs/setup-guide.md#scheduled-job-results-in-switchboard-optional)).
 - **More:** members and invites, what each agent is good at, notifications, and your devices.
 

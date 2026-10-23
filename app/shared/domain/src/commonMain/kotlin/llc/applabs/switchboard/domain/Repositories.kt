@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.json.JsonElement
 import llc.applabs.switchboard.domain.model.Activity
+import llc.applabs.switchboard.domain.model.JobResultOpened
 import llc.applabs.switchboard.domain.model.Approval
 import llc.applabs.switchboard.domain.model.RelaySetup
 import llc.applabs.switchboard.domain.model.RelayStatus
@@ -150,6 +151,8 @@ interface ControlRepository {
     suspend fun deleteJob(agentId: String, jobId: String)
     /** Post this job's results into a conversation here (needs the agent's relay connected). */
     suspend fun setResultsHere(agentId: String, jobId: String, on: Boolean): Job
+    /** Open a conversation in which the agent shows a run's result ([at] from `recentRuns`; null: the last run). */
+    suspend fun openJobResult(agentId: String, jobId: String, at: String?): JobResultOpened
     suspend fun relayStatus(agentId: String): RelayStatus
     suspend fun relaySetup(agentId: String): RelaySetup
     suspend fun removeRelay(agentId: String)

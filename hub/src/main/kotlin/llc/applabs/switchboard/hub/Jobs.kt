@@ -40,6 +40,13 @@ data class JobIn(
     @SerialName("results_here") val resultsHere: Boolean? = null,
 )
 
+/** Which run's result to show: a `recent_runs[].at`, or the last run when omitted. */
+@Serializable
+data class JobResultIn(val at: String? = null)
+
+@Serializable
+data class JobResultOut(@SerialName("session_id") val sessionId: String, @SerialName("run_id") val runId: String)
+
 /**
  * Scheduled jobs (spec F17, contract `/agents/{id}/jobs…`), kept by the agent itself (Hermes cron).
  * Anyone who may use the agent sees its jobs; changing them needs job permission (owner, admins,
@@ -55,6 +62,8 @@ class Jobs(
 ) {
     var notifier: Notifier? = null
     lateinit var relay: Relay
+    lateinit var conversations: Conversations
+    lateinit var runs: Runs
     private val log = org.slf4j.LoggerFactory.getLogger(Jobs::class.java)
 
     suspend fun list(user: HubUser, agentId: String): Items<JobOut> {
@@ -116,6 +125,24 @@ class Jobs(
         if (action !in setOf("pause", "resume", "run")) throw HubException.invalid("action: pause, resume or run")
         val (agent, api, target) = context(user, agentId, manage = true)
         return changed(user, agent, action, out(agent.id, api.jobAction(target, jobId, action), user))
+    }
+
+    /**
+     * A run's result, without the relay: Hermes keeps every run's output in a file whatever the job's delivery,
+     * so this opens a conversation in which the agent reads that file. Anyone who may chat with the agent can.
+     */
+    suspend fun openResult(user: HubUser, agentId: String, jobId: String, input: JobResultIn): JobResultOut {
+        val (agent, api, target) = context(user, agentId, manage = false)
+        val job = api.jobs(target).firstOrNull { it.id == jobId } ?: throw HubException.notFound("job")
+        val at = input.at ?: job.lastRunAt ?: throw HubException(HttpStatusCode.Conflict, "no_runs", "No runs yet",
+            "\"${job.name}\" hasn't run yet.")
+        // Only times the hub saw (they go into the agent's instructions), and only ids a file name can have.
+        val known = at == job.lastRunAt || db.query("SELECT 1 FROM job_run WHERE agent_id = ? AND job_id = ? AND ran_at = ?",
+            agent.id, job.id, at) { 1 }.isNotEmpty()
+        if (!known || !at.matches(SAFE_TIME) || !job.id.matches(SAFE_ID)) throw HubException.invalid("at: one of the job's runs")
+        val c = conversations.create(user, SessionCreate(agent.id, title = "Result: ${job.name}".take(120)))
+        val run = runs.start(user, c.id, RunInputIn(resultRequest(job.name, job.id, at)))
+        return JobResultOut(c.id, run.id)
     }
 
     private fun changed(user: HubUser, agent: AgentRecord, change: String, job: JobOut): JobOut {
@@ -201,5 +228,15 @@ class Jobs(
     companion object {
         const val RECENT = 10
         const val KEEP = 50
+        private val SAFE_TIME = Regex("[0-9T:.+\\- Z]{10,40}")
+        private val SAFE_ID = Regex("[A-Za-z0-9_\\-]{1,64}")
+
+        /** What the person asks the agent; Hermes saves each run as `cron/output/<job id>/<local start time>.md`. */
+        internal fun resultRequest(name: String, jobId: String, at: String) =
+            "Show me the result of my scheduled job \"${name.replace('"', '\'')}\" (job id $jobId) from its run at $at (UTC). " +
+            "Hermes saves every run's output in your Hermes home folder under cron/output/$jobId/, one file per run, " +
+            "named by its start time in this computer's local time zone (YYYY-MM-DD_HH-MM-SS.md); open the one for " +
+            "that run. Show the response " +
+            "part in full, as it is. Don't run the job again or redo its work."
     }
 }

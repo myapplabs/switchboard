@@ -91,8 +91,12 @@ the coordinator, pick the right agent for each task.
 
 ### Scheduled-job results in Switchboard (optional)
 
-The **Jobs** tab always shows when each job ran and whether it worked, and tells you when one fails. To
-also get each run's **results** in a conversation, the way Telegram shows them:
+The **Jobs** tab always shows when each job ran and whether it worked, and tells you when one fails.
+**Show last result** (or tapping one of a job's recent runs) opens a conversation in which the agent shows
+that run's result, from the output Hermes saves for every run. It works whatever the job's delivery, and you
+can ask about other runs there too ("and the one from Monday?").
+
+To have each run's **results** arrive in a conversation by themselves, the way Telegram shows them:
 
 1. In the app (as the owner): **Jobs → Job results from <agent> → Connect**. The app shows one command.
 2. On that agent's computer, in a terminal, as the account Hermes runs as, run the command. It saves a key

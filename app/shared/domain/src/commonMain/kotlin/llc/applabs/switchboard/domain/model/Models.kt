@@ -451,6 +451,10 @@ data class RelaySetup(val code: String, @SerialName("expires_at") val expiresAt:
 @Serializable
 data class JobRun(val at: String, val result: String? = null, val summary: String? = null)
 
+/** A conversation opened to show a job run's result (the agent reads its saved output). */
+@Serializable
+data class JobResultOpened(@SerialName("session_id") val sessionId: String, @SerialName("run_id") val runId: String)
+
 @Serializable
 data class JobInput(val name: String, val schedule: String, val prompt: String, val repeat: Int? = null)
 

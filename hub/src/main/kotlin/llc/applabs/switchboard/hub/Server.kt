@@ -63,7 +63,7 @@ class Hub(
     val notifier = Notifier(db, config.pushRelayUrl, relayHttp, scope)
     val runs = Runs(db, conversations, agents, events, permissions, accounts, approvals, scope, retryDelaysMs = runRetryDelaysMs).also { it.notifier = notifier }
     val members = Members(db, accounts, events, config)
-    val jobs = Jobs(db, agents, permissions, accounts, events).also { it.notifier = notifier }
+    val jobs = Jobs(db, agents, permissions, accounts, events).also { it.notifier = notifier; it.conversations = conversations; it.runs = runs }
     val quickCommands = QuickCommands(db, agents)
     val pairing = Pairing(db, accounts)
     val passkeys = Passkeys(db, accounts, pairing, members, config)
@@ -259,6 +259,10 @@ fun Application.hubModule(hub: Hub) {
                     delete("/{job_id}") {
                         hub.jobs.delete(call.user(), call.parameters["agent_id"]!!, call.parameters["job_id"]!!)
                         call.respond(HttpStatusCode.NoContent)
+                    }
+                    post("/{job_id}/result") {
+                        call.respond(HttpStatusCode.Created, hub.jobs.openResult(call.user(), call.parameters["agent_id"]!!,
+                            call.parameters["job_id"]!!, runCatching { call.receive<JobResultIn>() }.getOrDefault(JobResultIn())))
                     }
                     post("/{job_id}/{action}") {
                         call.respond(hub.jobs.action(call.user(), call.parameters["agent_id"]!!, call.parameters["job_id"]!!, call.parameters["action"]!!))

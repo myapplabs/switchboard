@@ -24,6 +24,8 @@ M5, the task board (spec "Task board: agents working together"). Additive.
   the gateway's `/relay` WebSocket (outside `/v1`, Hermes relay contract v1: `send` and `typing` only).
   `Job.results_here`, `Job.results_session_id`, `JobPatch.results_here` / `JobInput.results_here`; message kind
   `job_result`; notification kind `job_finished` (`session_id`, `agent_id`, `job_id`); error `relay_not_set_up`.
+- `POST /agents/{id}/jobs/{job_id}/result` (`at` optional): a conversation in which the agent shows a run's saved
+  result, without the relay and whatever the job's delivery; error `no_runs`.
 
 ## 0.3.0 — draft (2026-10-21)
 
