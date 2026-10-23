@@ -23,11 +23,12 @@ The hub stores the following on the hub owner's computer. AppLabs has no access 
 - **Account**: your display name, your role, and the public part of your passkey. The hub never receives your passkey's private key.
 - **Signed-in devices**: each device's name (such as "Pixel 10"), platform, when it was last used, and its notification token and grant if notifications are on. Sign-in tokens are stored only as hashes.
 - **Conversations**: the messages you and agents send, their titles, the model used, approvals and answers, and results of scheduled jobs.
+- **Files and photos you send**: stored on the hub with their conversation, and deleted with it. Photos are made smaller on your device before they're sent. Files you add but don't send are deleted after a day.
 - **Agents and permissions**: the agents added, who may use them, with which profiles, models and daily limits. Agent keys are encrypted (AES-256-GCM).
 - **Scheduled jobs and the task board**: jobs, their run history, and cards and their steps.
 - **Activity log**: who did what and when (for example, who approved a request), without message content. It's kept for 90 days.
 
-The hub also sends your messages to the agents you use. Agents, and the AI providers they use, process them under their own terms and privacy policies, which the hub owner chose.
+The hub also sends your messages to the agents you use, together with the files and photos you send: photos inside the message, and every file as a private download link that works for 7 days. Agents, and the AI providers they use, process them under their own terms and privacy policies, which the hub owner chose.
 
 **How long.** Information stays on the hub until you or the hub owner delete it, except the activity log (90 days).
 
@@ -36,7 +37,7 @@ The hub also sends your messages to the agents you use. Agents, and the AI provi
 - The hub's address, your sign-in tokens, and a copy of your profile on the hub (name and role), encrypted with the Android Keystore or the iOS Keychain.
 - Your passkey, kept by your device's password manager (for example, Google Password Manager or iCloud Keychain) under that provider's privacy policy.
 
-Signing out or uninstalling the App removes what the App stores. Your passkey stays in your password manager until you delete it there.
+When you open a file from a conversation, the App keeps one copy in its private cache so another app can show it; opening the next file replaces it. Signing out or uninstalling the App removes what the App stores. Your passkey stays in your password manager until you delete it there.
 
 ## 4. Information AppLabs processes
 
@@ -54,6 +55,7 @@ We use this information only to deliver notifications, run and secure the Servic
 
 - **Notifications**: optional. Turn them off at any time in the App (More, Notifications) or in your device's settings.
 - **Camera**: used only to scan an invite or pairing QR code, and only when you choose to. On Android, Google Play services' code scanner handles the camera, and the App receives only the text in the code. No photos or video are kept or sent.
+- **Photos and files**: the App uses your device's own photo picker and file picker. It gets only the photo or file you choose, never access to your photo library or storage.
 - **Network**: to reach your hub and the Relay.
 
 ## 6. Sharing
@@ -62,7 +64,7 @@ We don't sell personal information, share it for cross-context behavioral advert
 
 ## 7. Your choices and rights
 
-**Deleting your account.** You can delete your account in the App at any time: More, Account, Delete my account. This deletes the conversations you own (on the hub and on its agents), your access to agents, your quick commands, your passkey registration, devices and notification tokens on the hub, and signs you out everywhere. Your name is replaced with "Deleted member" wherever it still appears, such as the activity log and board cards you created (the cards stay, for the people you worked with). If you own the hub, your account can't exist without it, so deleting it deletes everything on the hub: every member's account and conversations, the agents' settings and keys, jobs, cards and settings. A hub owner can also remove members. If you can't use the App, see switchboard.applabs.llc/delete-account.html.
+**Deleting your account.** You can delete your account in the App at any time: More, Account, Delete my account. This deletes the conversations you own (on the hub and on its agents) and the files in them, your access to agents, your quick commands, your passkey registration, devices and notification tokens on the hub, and signs you out everywhere. Your name is replaced with "Deleted member" wherever it still appears, such as the activity log and board cards you created (the cards stay, for the people you worked with). If you own the hub, your account can't exist without it, so deleting it deletes everything on the hub: every member's account and conversations, the agents' settings and keys, jobs, cards and settings. A hub owner can also remove members. If you can't use the App, see switchboard.applabs.llc/delete-account.html.
 
 **Other choices.** You can delete single conversations in the App, sign out other devices (More, Signed-in devices), and turn notifications off. A hub owner can also delete everything by uninstalling the hub and deleting its data folder.
 

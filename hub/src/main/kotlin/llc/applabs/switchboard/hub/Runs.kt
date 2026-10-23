@@ -76,10 +76,16 @@ class Runs(
 
     // ── start ───────────────────────────────────────────────────────────────
 
-    suspend fun start(user: HubUser, sessionId: String, input: RunInputIn): RunOut {
+    /** Files sent with messages (set by the hub). */
+    var attachments: Attachments? = null
+
+    /** Start a run; [hubUrl] is where the agent downloads attached files (the hub's public address). */
+    suspend fun start(user: HubUser, sessionId: String, input: RunInputIn, hubUrl: String? = null): RunOut {
         val c = conversations.get(user, sessionId)
         val text = input.text.trim()
-        if (text.isEmpty() || text.length > 100_000) throw HubException.invalid("text: 1–100000 characters")
+        if ((text.isEmpty() && input.attachments.isEmpty()) || text.length > 100_000) throw HubException.invalid("text: 1–100000 characters")
+        val files = if (input.attachments.isEmpty()) emptyList()
+            else attachments?.unsent(user, c.id, input.attachments) ?: throw HubException.invalid("attachments: not supported here")
         val agent = agents.record(c.agentId) ?: throw HubException.notFound("agent")
         val runsApi = agents.adapterFor(agent) as? AgentRuns ?: throw notSupported()
         when (agent.status) {
@@ -113,10 +119,20 @@ class Runs(
                 "A run is active", "Wait for the current answer, or stop it, before sending another message.")
             val runId = newId("run")
             val history = historyIfNeeded(runsApi, target, c)
+            val userMsg = newId("msg")
+            // Files: attached to the person's message first (each gets the agent's download link); photos also go
+            // inline, up to a total size, so the agent sees them.
+            val links = attachments?.attach(files, userMsg).orEmpty()
+            var inlineBytes = 0L
+            val inlined = files.filter { it.isImage && (inlineBytes + it.size <= Attachments.MAX_INLINE_BYTES).also { ok -> if (ok) inlineBytes += it.size } }
+            val images = inlined.map { "data:${it.contentType};base64," + java.util.Base64.getEncoder().encodeToString(attachments!!.bytes(it)) }
+            val withFiles = if (files.isEmpty()) agentInput else agentInput + fileNote(files, links, inlined.map { it.id }.toSet(), hubUrl)
             val agentRunId = try {
-                runsApi.startRun(target, RunRequest(agentInput, c.agentSessionId, conversations.memoryScope(c), history,
-                    modelId?.takeIf { agent.capabilities.modelSwitching }, runId))
-            } catch (e: AgentRunException) {
+                runsApi.startRun(target, RunRequest(withFiles, c.agentSessionId, conversations.memoryScope(c), history,
+                    modelId?.takeIf { agent.capabilities.modelSwitching }, runId, images))
+            } catch (e: Throwable) {
+                attachments?.detach(files)   // not sent: the files can go with the next try
+                if (e !is AgentRunException) throw e
                 throw when (e.code) {
                     "agent_busy" -> HubException(HttpStatusCode.TooManyRequests, "agent_busy", "Agent busy", e.message, retryAfterS = e.retryAfterS)
                     "agent_offline", "agent_key_rejected" -> HubException(HttpStatusCode.ServiceUnavailable, e.code, "Agent unavailable", e.message)
@@ -124,7 +140,6 @@ class Runs(
                 }
             }
             val t = now()
-            val userMsg = newId("msg")
             val replyMsg = newId("msg")
             val label = modelId?.let(Conversations::modelLabel)
             db.tx { conn ->
@@ -136,7 +151,8 @@ class Runs(
                 exec("""INSERT INTO run (id, hub_id, session_id, agent_id, user_id, agent_run_id, status, message_id, model_label, model_id, profile_id, created_at)
                         VALUES (?, ?, ?, ?, ?, ?, 'running', ?, ?, ?, ?, ?)""", runId, c.hubId, c.id, c.agentId, user.userId, agentRunId, replyMsg, label,
                     modelId, access.profileId, t)
-                exec("UPDATE chat_session SET last_message_preview = ?, updated_at = ? WHERE id = ?", text.take(200), t, c.id)
+                exec("UPDATE chat_session SET last_message_preview = ?, updated_at = ? WHERE id = ?",
+                    text.ifEmpty { files.joinToString(", ") { it.name } }.take(200), t, c.id)
             }
             emit(runId, "run.started", mapOf("session_id" to c.id, "agent_id" to c.agentId, "model_label" to label, "message_id" to replyMsg))
             // Metadata only (spec: owners see who used which agent and model, never the content).
@@ -149,6 +165,15 @@ class Runs(
     }
 
     /** The hybrid fallback: history only when the agent has no session to continue. */
+    /** What the agent reads about the files: names, types, sizes and download links (for files it can't see inline). */
+    private fun fileNote(files: List<StoredAttachment>, links: Map<String, String>, inlined: Set<String>, hubUrl: String?): String =
+        files.joinToString("\n", prefix = "\n\n[Files sent with this message" +
+            (if (hubUrl != null) ". Download links work for ${Attachments.AGENT_LINK_DAYS} days" else "") + ":]\n") { a ->
+            val link = hubUrl?.let { base -> links[a.id]?.let { "$base/files/${a.id}/$it/" + java.net.URLEncoder.encode(a.name, Charsets.UTF_8).replace("+", "%20") } }
+            "- ${a.name} (${a.contentType}, ${Attachments.sizeLabel(a.size)})" +
+                (if (a.id in inlined) ", shown to you above" else "") + (link?.let { ": $it" } ?: "")
+        }
+
     private suspend fun historyIfNeeded(runsApi: AgentRuns, target: ProfileTarget, c: ConversationRecord): List<HistoryMessage>? {
         val earlier = db.query("SELECT COUNT(*) FROM message WHERE session_id = ? AND role = 'assistant' AND text != ''", c.id) { it.getInt(1) }.single()
         if (earlier == 0) return null

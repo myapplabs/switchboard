@@ -13,10 +13,12 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
+import io.ktor.client.statement.readRawBytes
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
+import io.ktor.http.encodeURLParameter
 import io.ktor.utils.io.readUTF8Line
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
@@ -129,6 +131,35 @@ class HubClient(engine: HttpClientEngine?, val tokens: TokenStore) {
         throw e
     } catch (e: Exception) {
         throw unreachable(url)
+    }
+
+    /** Raw bytes up (a file for a message); signed in and refreshed like [call]. Returns the JSON reply. */
+    suspend fun upload(path: String, name: String, type: String, bytes: ByteArray): String =
+        raw(HttpMethod.Post, path) {
+            header("X-Filename", name.encodeURLParameter())
+            contentType(runCatching { ContentType.parse(type) }.getOrDefault(ContentType.Application.OctetStream))
+            setBody(bytes)
+        }.bodyAsText()
+
+    /** Raw bytes down (an attached file). */
+    suspend fun download(path: String): ByteArray = raw(HttpMethod.Get, path) {}.readRawBytes()
+
+    /** A call with a raw body or reply: longer time limit (files), same sign-in, refresh and errors as [send]. */
+    private suspend fun raw(method: HttpMethod, path: String, build: HttpRequestBuilder.() -> Unit): HttpResponse {
+        val url = (tokens.hubUrl?.let(::base) ?: throw HubException("not_signed_in", 0, "Not connected", "Connect to a hub first.")) + path
+        suspend fun once(token: String?): HttpResponse = try {
+            http.request(url) {
+                this.method = method
+                timeout { requestTimeoutMillis = 180_000 }
+                token?.let { header(HttpHeaders.Authorization, "Bearer $it") }
+                build()
+            }
+        } catch (e: CancellationException) { throw e } catch (e: Exception) { throw unreachable(url) }
+        val sent = tokens.accessToken
+        var r = once(sent)
+        if (r.status.value == 401 && refresh(sentWith = sent?.let { "Bearer $it" })) r = once(tokens.accessToken)
+        if (r.status.value !in 200..299) throw problem(r.status.value, r.bodyAsText())
+        return r
     }
 
     /** Rotate tokens once; false when this device must sign in again. */

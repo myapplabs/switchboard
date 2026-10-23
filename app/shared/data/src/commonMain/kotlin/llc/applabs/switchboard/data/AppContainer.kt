@@ -24,6 +24,9 @@ class AppContainer(
     pushTokens: PushTokens? = null,
     override val scanQr: (suspend () -> String?)? = null,
     override val appVersion: String = "",
+    override val pickPhoto: (suspend () -> llc.applabs.switchboard.domain.model.PickedFile?)? = null,
+    override val pickFile: (suspend () -> llc.applabs.switchboard.domain.model.PickedFile?)? = null,
+    override val openFile: ((name: String, contentType: String, bytes: ByteArray) -> Unit)? = null,
 ) : AppDependencies {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val client = HubClient(engine, TokenStore(store))

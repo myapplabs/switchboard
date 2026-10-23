@@ -1,5 +1,21 @@
 package llc.applabs.switchboard.ui.chat
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.size
+import org.jetbrains.compose.resources.decodeToImageBitmap
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import llc.applabs.switchboard.domain.model.Attachment
+import llc.applabs.switchboard.domain.model.PickedFile
+import llc.applabs.switchboard.ui.common.AppIcons
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -65,7 +81,9 @@ import llc.applabs.switchboard.ui.common.statusColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatScreen(viewModel: ChatViewModel, myUserId: String, onBack: () -> Unit) {
+fun ChatScreen(viewModel: ChatViewModel, myUserId: String, onBack: () -> Unit,
+               pickPhoto: (suspend () -> PickedFile?)? = null, pickFile: (suspend () -> PickedFile?)? = null,
+               openFile: ((String, String, ByteArray) -> Unit)? = null) {
     val s by viewModel.state.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     var renaming by remember { mutableStateOf(false) }
@@ -114,13 +132,16 @@ fun ChatScreen(viewModel: ChatViewModel, myUserId: String, onBack: () -> Unit) {
             LazyColumn(state = list, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(s.messages, key = { it.id }) { m ->
-                    if (m.role == "user") UserBubble(m, mine = m.authorUserId == null || m.authorUserId == myUserId)
+                    if (m.role == "user") UserBubble(m, mine = m.authorUserId == null || m.authorUserId == myUserId, load = viewModel::attachmentBytes,
+                        onOpen = openFile?.let { open -> { a: Attachment -> viewModel.openAttachment(a, open) } })
                     else AssistantMessage(m, onAnswer = viewModel::answer, onDecide = viewModel::decide)
                 }
                 if (s.running) item { RunStatusLine(s.runStatus) }
             }
             s.error?.let { ErrorBanner(it, onRetry = { viewModel.load() }, modifier = Modifier.padding(12.dp)) }
-            Composer(s, viewModel::onInput, viewModel::send, viewModel::stop)
+            Composer(s, viewModel::onInput, viewModel::send, viewModel::stop,
+                onPhoto = pickPhoto?.let { p -> { viewModel.addFile(p) } }, onFile = pickFile?.let { f -> { viewModel.addFile(f) } },
+                onRemove = viewModel::removePending)
         }
     }
 
@@ -151,14 +172,57 @@ fun ChatScreen(viewModel: ChatViewModel, myUserId: String, onBack: () -> Unit) {
 private fun shortModel(label: String) = label.removeSuffix(":free").let { if (it.length > 18) it.take(17) + "…" else it }
 
 @Composable
-private fun UserBubble(m: ChatMessage, mine: Boolean) {
-    Column(Modifier.fillMaxWidth(), horizontalAlignment = if (mine) Alignment.End else Alignment.Start) {
+private fun UserBubble(m: ChatMessage, mine: Boolean, load: suspend (String) -> ByteArray, onOpen: ((Attachment) -> Unit)?) {
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = if (mine) Alignment.End else Alignment.Start, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (m.kind == "steer") Text("GUIDANCE", style = MonoLabel, color = MaterialTheme.colorScheme.primary)
-        Text(m.text, modifier = Modifier.widthIn(max = 320.dp)
+        m.attachments.forEach { a ->
+            if (a.isImage) AttachmentImage(a, load, onOpen)
+            else FileChip(a.name, sizeLabel(a.size), onClick = onOpen?.let { { it(a) } })
+        }
+        if (m.text.isNotEmpty()) Text(m.text, modifier = Modifier.widthIn(max = 320.dp)
             .background(if (mine) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
             .padding(horizontal = 12.dp, vertical = 8.dp),
             color = if (mine) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface)
     }
+}
+
+/** A sent photo, loaded from the hub; tap to open it full size in another app. */
+@OptIn(org.jetbrains.compose.resources.ExperimentalResourceApi::class)
+@Composable
+private fun AttachmentImage(a: Attachment, load: suspend (String) -> ByteArray, onOpen: ((Attachment) -> Unit)?) {
+    val image by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, a.id) {
+        value = runCatching { load(a.id).decodeToImageBitmap() }.getOrNull()
+    }
+    val shape = RoundedCornerShape(12.dp)
+    val mod = Modifier.widthIn(max = 240.dp).heightIn(max = 320.dp).clip(shape)
+        .then(if (onOpen != null) Modifier.clickable(onClickLabel = "Open ${a.name}") { onOpen(a) } else Modifier)
+    image?.let { Image(it, contentDescription = a.name, modifier = mod, contentScale = ContentScale.Fit) }
+        ?: Box(Modifier.size(160.dp, 120.dp).clip(shape).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+            Text(a.name, style = MonoLabel, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(8.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+}
+
+/** A file: its name and size (or state), tappable to open, with an optional remove button. */
+@Composable
+private fun FileChip(name: String, detail: String, onClick: (() -> Unit)? = null, onRemove: (() -> Unit)? = null, error: Boolean = false) {
+    Row(Modifier.widthIn(max = 280.dp).clip(RoundedCornerShape(10.dp)).background(MaterialTheme.colorScheme.surfaceVariant)
+        .then(if (onClick != null) Modifier.clickable(onClickLabel = "Open $name", onClick = onClick) else Modifier)
+        .padding(start = 10.dp, end = if (onRemove != null) 2.dp else 12.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Icon(AppIcons.File, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(Modifier.weight(1f, fill = false)) {
+            Text(name, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(detail, style = MonoLabel, color = if (error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        onRemove?.let { IconButton(onClick = it, modifier = Modifier.size(32.dp)) { Icon(AppIcons.Close, contentDescription = "Remove $name", modifier = Modifier.size(16.dp)) } }
+    }
+}
+
+private fun sizeLabel(size: Long) = when {
+    size >= 1_000_000 -> "${(size / 100_000) / 10.0} MB"
+    size >= 1_000 -> "${size / 1_000} KB"
+    else -> "$size bytes"
 }
 
 @Composable
@@ -262,13 +326,37 @@ private fun RunStatusLine(status: String?) {
 }
 
 @Composable
-private fun Composer(s: ChatUiState, onInput: (String) -> Unit, onSend: () -> Unit, onStop: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(s.input, onInput, modifier = Modifier.weight(1f).testTag("composer"), maxLines = 5, enabled = !s.running || s.canSteer,
-            placeholder = { Text(if (s.running) (if (s.canSteer) "Add guidance…" else "Working…") else "Message ${s.agent?.name ?: ""}") })
-        if (s.running) {
-            if (s.canSteer && s.input.isNotBlank()) FilledTonalButton(onClick = onSend) { Text("Guide") }
-            Button(onClick = onStop, modifier = Modifier.testTag("stop")) { Text("Stop") }
-        } else Button(onClick = onSend, enabled = s.input.isNotBlank() && !s.sending && s.agent?.isAvailable != false, modifier = Modifier.testTag("send")) { Text("Send") }
+private fun Composer(s: ChatUiState, onInput: (String) -> Unit, onSend: () -> Unit, onStop: () -> Unit,
+                     onPhoto: (() -> Unit)?, onFile: (() -> Unit)?, onRemove: (Int) -> Unit) {
+    var attachMenu by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (s.pending.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            s.pending.forEach { p ->
+                FileChip(p.name, when { p.error != null -> p.error; p.attachment == null -> "Adding…"; else -> sizeLabel(p.attachment.size) },
+                    onRemove = { onRemove(p.localId) }, error = p.error != null)
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            if ((onPhoto != null || onFile != null) && !s.running) Box {
+                IconButton(onClick = { attachMenu = true }, modifier = Modifier.testTag("attach")) {
+                    Icon(AppIcons.Attach, contentDescription = "Add a photo or file", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                DropdownMenu(attachMenu, onDismissRequest = { attachMenu = false }) {
+                    onPhoto?.let { DropdownMenuItem(text = { Text("Photo") }, onClick = { attachMenu = false; it() }) }
+                    onFile?.let { DropdownMenuItem(text = { Text("File") }, onClick = { attachMenu = false; it() }) }
+                }
+            }
+            OutlinedTextField(s.input, onInput, modifier = Modifier.weight(1f).testTag("composer"), maxLines = 5, enabled = !s.running || s.canSteer,
+                shape = RoundedCornerShape(24.dp),
+                placeholder = { Text(if (s.running) (if (s.canSteer) "Add guidance…" else "Working…") else "Message ${s.agent?.name ?: ""}", maxLines = 1) })
+            when {
+                s.running && !(s.canSteer && s.input.isNotBlank()) ->
+                    FilledTonalIconButton(onClick = onStop, modifier = Modifier.testTag("stop")) { Icon(AppIcons.Stop, contentDescription = "Stop") }
+                else -> FilledIconButton(onClick = onSend, modifier = Modifier.testTag("send"),
+                    enabled = if (s.running) s.input.isNotBlank() else s.canSend && !s.sending && s.agent?.isAvailable != false) {
+                    Icon(AppIcons.Send, contentDescription = if (s.running) "Send guidance" else "Send")
+                }
+            }
+        }
     }
 }

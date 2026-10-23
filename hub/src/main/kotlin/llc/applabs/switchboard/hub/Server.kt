@@ -19,6 +19,10 @@ import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.receive
+import io.ktor.server.request.receiveChannel
+import io.ktor.server.response.respondBytes
+import io.ktor.utils.io.readRemaining
+import kotlinx.io.readByteArray
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.delete
@@ -52,6 +56,8 @@ class Hub(
     backoffMs: List<Long> = listOf(2_000, 5_000, 15_000, 60_000),
     runRetryDelaysMs: List<Long> = listOf(1_000, 2_000, 5_000, 10_000, 30_000, 30_000),
     relayHttp: io.ktor.client.HttpClient = HermesAdapter.client(),
+    /** Where sent files are kept (the data folder's `files/`). */
+    filesDir: java.nio.file.Path = java.nio.file.Files.createTempDirectory("switchboard-files"),
 ) {
     val accounts = Accounts(db)
     val events = UserEvents()
@@ -70,6 +76,7 @@ class Hub(
     val tasks = Tasks(db, accounts, agents, permissions, conversations, runs, events, scope).also { it.notifier = notifier }
     val forge = ForgeBridges(db, accounts)
     val relay = Relay(db, secrets, agents, conversations, accounts).also { it.notifier = notifier; jobs.relay = it }
+    val attachments = Attachments(db, filesDir).also { conversations.attachments = it; runs.attachments = it }
 
     init {
         accounts.ensureHub(config.hubName)
@@ -97,6 +104,7 @@ class Hub(
             .onFailure { log.info("hub deletion: some of {}'s conversations stay on their agents: {}", u.userId, it.message) }
         events.publish(everyone.map { it.userId }, "account.revoked")
         db.wipe()
+        attachments.deleteAllFiles()
         accounts.ensureHub(config.hubName)
         log.warn("The owner deleted their account: everything on this hub was deleted. Run `switchboard-hub setup-code` to start again.")
     }
@@ -149,6 +157,24 @@ class Hub(
 
 private val log = LoggerFactory.getLogger("llc.applabs.switchboard.hub.Server")
 
+/** The hub's address as this request reached it (a host's characters only), e.g. for links the agent follows. */
+private fun ApplicationCall.hubUrl(): String? {
+    val host = request.headers["Host"]?.takeIf { it.isNotBlank() }
+        ?: request.local.serverHost.let { h -> if (request.local.serverPort in setOf(80, 443)) h else "$h:${request.local.serverPort}" }
+    val local = host.startsWith("127.0.0.1") || host.startsWith("localhost") || host.startsWith("[::1]")
+    val scheme = request.headers["X-Forwarded-Proto"]?.takeIf { it == "http" || it == "https" } ?: if (local) "http" else "https"
+    return Relay.safeHubUrl(scheme, host)
+}
+
+/** An attachment's bytes: downloaded, never shown inline by a browser (it isn't the hub's own content). */
+private suspend fun ApplicationCall.respondFile(a: StoredAttachment, bytes: ByteArray) {
+    response.headers.append("Content-Disposition", "attachment; filename*=UTF-8''" +
+        java.net.URLEncoder.encode(a.name, Charsets.UTF_8).replace("+", "%20"))
+    response.headers.append("X-Content-Type-Options", "nosniff")
+    response.headers.append("Cache-Control", "private, no-store")
+    respondBytes(bytes, runCatching { io.ktor.http.ContentType.parse(a.contentType) }.getOrDefault(io.ktor.http.ContentType.Application.OctetStream))
+}
+
 fun Application.hubModule(hub: Hub) {
     install(ContentNegotiation) { json(hubJson) }
     install(CallLogging)   // logs method, path and status only — never headers (tokens) or bodies
@@ -184,11 +210,14 @@ fun Application.hubModule(hub: Hub) {
         }
         // Hermes's relay (scheduled-job results): the setup script for a one-time code, and the gateway's
         // WebSocket. Both carry their own credentials (the code; the per-agent secret), never a person's.
+        // An attached file, for the agent: the link in its message is the only key (random token, 7 days).
+        get("/files/{id}/{token}/{name}") {
+            val a = hub.attachments.forAgent(call.parameters["id"]!!, call.parameters["token"]!!)
+                ?: return@get call.respond(HttpStatusCode.NotFound)
+            call.respondFile(a, hub.attachments.bytes(a))
+        }
         get("/relay/setup/{code}") {
-            val host = call.request.headers["Host"].orEmpty()
-            val local = host.startsWith("127.0.0.1") || host.startsWith("localhost") || host.startsWith("[::1]")
-            val scheme = call.request.headers["X-Forwarded-Proto"]?.takeIf { it == "http" || it == "https" } ?: if (local) "http" else "https"
-            val url = Relay.safeHubUrl(scheme, host) ?: throw HubException.invalid("Host")
+            val url = call.hubUrl() ?: throw HubException.invalid("Host")
             val script = hub.relay.setupScript(call.parameters["code"]!!, url)
                 ?: return@get call.respondText("echo 'This setup code is unknown, used or expired. Make a new one in the app.' >&2; exit 1\n",
                     io.ktor.http.ContentType.Text.Plain, HttpStatusCode.NotFound)
@@ -293,6 +322,18 @@ fun Application.hubModule(hub: Hub) {
                         call.respond(hub.jobs.action(call.user(), call.parameters["agent_id"]!!, call.parameters["job_id"]!!, call.parameters["action"]!!))
                     }
                 }
+                route("/attachments/{attachment_id}") {
+                    get {
+                        val a = hub.attachments.stored(call.parameters["attachment_id"]!!) ?: throw HubException.notFound("attachment")
+                        hub.conversations.get(call.user(), a.sessionId)   // only people who can see the conversation
+                        if (a.messageId == null && a.ownerUserId != call.user().userId) throw HubException.notFound("attachment")
+                        call.respondFile(a, hub.attachments.bytes(a))
+                    }
+                    delete {
+                        hub.attachments.removeUnsent(call.user(), call.parameters["attachment_id"]!!)
+                        call.respond(HttpStatusCode.NoContent)
+                    }
+                }
                 post("/ask-all") { call.respond(HttpStatusCode.Accepted, hub.askAll(call.user(), call.receive<AskAllIn>())) }
                 get("/approvals") { call.respond(hub.approvals.list(call.user(), call.request.queryParameters["status"] ?: "pending")) }
                 post("/approvals/{approval_id}/decision") {
@@ -363,7 +404,18 @@ fun Application.hubModule(hub: Hub) {
                         call.respond(hub.conversations.messages(call.user(), call.parameters["session_id"]!!, p["cursor"], p["limit"]?.toIntOrNull() ?: 30))
                     }
                     post("/{session_id}/runs") {
-                        call.respond(HttpStatusCode.Accepted, hub.runs.start(call.user(), call.parameters["session_id"]!!, call.receive<RunInputIn>()))
+                        call.respond(HttpStatusCode.Accepted, hub.runs.start(call.user(), call.parameters["session_id"]!!, call.receive<RunInputIn>(),
+                            hub.config.publicUrl?.trimEnd('/') ?: call.hubUrl()))
+                    }
+                    // A file or photo for the next message: the raw bytes, `X-Filename` (URL-encoded) and `Content-Type`.
+                    post("/{session_id}/attachments") {
+                        val session = hub.conversations.get(call.user(), call.parameters["session_id"]!!)
+                        val declared = call.request.headers["Content-Length"]?.toLongOrNull()
+                        if (declared != null && declared > Attachments.MAX_BYTES) throw HubException(HttpStatusCode.PayloadTooLarge, "too_large",
+                            "File too large", "Files can be up to ${Attachments.MAX_BYTES / 1_000_000} MB.")
+                        val bytes = call.receiveChannel().readRemaining(Attachments.MAX_BYTES + 1L).readByteArray()
+                        call.respond(HttpStatusCode.Created, hub.attachments.upload(call.user(), session, call.request.headers["X-Filename"],
+                            call.request.headers["Content-Type"], bytes))
                     }
                 }
                 route("/runs/{run_id}") {

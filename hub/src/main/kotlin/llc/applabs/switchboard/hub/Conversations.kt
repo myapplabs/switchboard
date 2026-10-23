@@ -38,6 +38,8 @@ class Conversations(
 ) {
     private val log = LoggerFactory.getLogger(Conversations::class.java)
     lateinit var permissions: Permissions
+    /** Files sent in conversations (set by the hub). */
+    var attachments: Attachments? = null
 
     fun create(user: HubUser, input: SessionCreate): ChatSessionOut {
         val agent = agents.record(input.agentId)?.takeIf { it.hubId == user.hubId } ?: throw HubException.notFound("agent")
@@ -140,6 +142,7 @@ class Conversations(
         val audience = audience(c).map { it.userId }
         if (activeRunId(id) != null) throw HubException(HttpStatusCode.Conflict, "run_active", "A run is active",
             "Stop the current answer before deleting the conversation.")
+        attachments?.deleteForSession(id)
         db.update("DELETE FROM chat_session WHERE id = ?", id)
         events.publish(audience, "session.removed", mapOf("session_id" to id))
         accounts.activity(c.hubId, user.userId, c.agentId, "session_deleted")
@@ -160,10 +163,12 @@ class Conversations(
                 rs.str("run_id"), rs.str("status"), rs.str("model_label"), rs.getString("created_at"))
         }
         val next = if (rows.size > n) Base64.getUrlEncoder().withoutPadding().encodeToString((offset + n).toString().toByteArray()) else null
+        val files = attachments?.ofMessages(rows.take(n).filter { it.role == "user" }.map { it.id }).orEmpty()
         return Page(rows.take(n).map { m ->
             MessageOut(m.id, m.role, m.kind, m.author, m.text, m.runId, m.status,
                 if (m.role == "assistant") toolCalls(m.id) else emptyList(),
-                if (m.role == "assistant") clarifications(m.id) else emptyList(), m.modelLabel, m.createdAt)
+                if (m.role == "assistant") clarifications(m.id) else emptyList(), m.modelLabel, m.createdAt,
+                attachments = files[m.id].orEmpty())
         }, next)
     }
 
@@ -199,6 +204,7 @@ class Conversations(
     fun startCleanup(scope: CoroutineScope) = scope.launch {
         while (isActive) {
             runCatching { cleanupOnce() }.onFailure { log.warn("agent cleanup failed: {}", it.message) }
+            runCatching { attachments?.cleanupUnsent() }
             runCatching { db.update("DELETE FROM activity WHERE at < ?", Instant.now().minus(90, ChronoUnit.DAYS).toString()) }   // F21: 90 days
             delay(60_000)
         }

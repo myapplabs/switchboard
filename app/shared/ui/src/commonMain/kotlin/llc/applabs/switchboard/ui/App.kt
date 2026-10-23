@@ -181,7 +181,7 @@ private fun Main(deps: AppDependencies, me: Me, hubUrl: String, openSession: Str
             composable(Routes.CHAT) { entry ->
                 val id = entry.savedStateHandle.get<String>("sessionId") ?: return@composable
                 val vm = viewModel(key = "chat-$id") { ChatViewModel(id, me.userId, deps.chat, deps.agents, deps.live, deps.control) }
-                ChatScreen(vm, me.userId, onBack = { nav.back() })
+                ChatScreen(vm, me.userId, onBack = { nav.back() }, pickPhoto = deps.pickPhoto, pickFile = deps.pickFile, openFile = deps.openFile)
             }
             composable(Routes.ADD_AGENT) {
                 val vm = viewModel { AddAgentViewModel(deps.agents) }

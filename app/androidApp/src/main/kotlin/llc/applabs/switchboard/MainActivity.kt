@@ -28,6 +28,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Pickers.register(this)
         enableEdgeToEdge()
         handle(intent)
         val container = (application as SwitchboardApp).container

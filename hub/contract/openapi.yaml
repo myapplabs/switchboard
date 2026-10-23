@@ -738,6 +738,59 @@ paths:
                   items: { type: array, items: { $ref: "#/components/schemas/Message" } }
                   next_cursor: { type: [string, "null"] }
 
+  /sessions/{session_id}/attachments:
+    post:
+      tags: [conversations]
+      operationId: uploadAttachment
+      summary: Add a file or photo for the next message
+      description: >-
+        The raw bytes (up to 25 MB), with `Content-Type` and the file name in `X-Filename` (URL-encoded). Send it by
+        naming its id in the next run's `attachments`; unsent files are deleted after a day. Files are deleted with
+        their conversation.
+      x-release: v1
+      parameters:
+        - { name: session_id, in: path, required: true, schema: { type: string } }
+        - { name: X-Filename, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "201":
+          description: Added
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Attachment" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "413": { $ref: "#/components/responses/Problem" }
+
+  /attachments/{attachment_id}:
+    get:
+      tags: [conversations]
+      operationId: downloadAttachment
+      summary: A file's bytes (people who can see its conversation)
+      x-release: v1
+      parameters:
+        - { name: attachment_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The file, as an attachment download
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "404": { $ref: "#/components/responses/Problem" }
+    delete:
+      tags: [conversations]
+      operationId: removeAttachment
+      summary: Remove a file you added but haven't sent
+      x-release: v1
+      parameters:
+        - { name: attachment_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Removed }
+        "404": { $ref: "#/components/responses/Problem" }
+
   /sessions/{session_id}/runs:
     post:
       tags: [runs]
@@ -1878,6 +1931,10 @@ components:
       required: [id, role, created_at]
       properties:
         id: { type: string }
+        attachments:
+          type: array
+          description: Files and photos sent with a person's message
+          items: { $ref: "#/components/schemas/Attachment" }
         role: { type: string, enum: [user, assistant] }
         kind:
           type: string
@@ -1910,14 +1967,27 @@ components:
 
     RunInput:
       type: object
-      required: [text]
+      description: Text, files, or both.
       properties:
-        text: { type: string, minLength: 1, maxLength: 100000 }
-        images:
+        text: { type: string, maxLength: 100000 }
+        attachments:
           type: array
-          maxItems: 4
-          items: { type: string, description: "data:image/...;base64 URL (only when capabilities.images)" }
+          maxItems: 10
+          description: >-
+            Ids of files added to this conversation first (`POST /sessions/{id}/attachments`), sent with this message.
+            Photos (JPEG, PNG, WebP, GIF; up to 5 MB together) also reach the agent inline; every file gets a
+            download link for the agent, valid 7 days.
+          items: { type: string }
         model_id: { type: string, description: 'Overrides the session''s model for this turn (must be granted)' }
+
+    Attachment:
+      type: object
+      required: [id, name, content_type, size]
+      properties:
+        id: { type: string }
+        name: { type: string, description: "File name, without folders, at most 120 characters" }
+        content_type: { type: string }
+        size: { type: integer, description: Bytes }
 
     RunStatus:
       type: string

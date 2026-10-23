@@ -5,6 +5,8 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.json.JsonElement
 import llc.applabs.switchboard.domain.model.Activity
+import llc.applabs.switchboard.domain.model.Attachment
+import llc.applabs.switchboard.domain.model.PickedFile
 import llc.applabs.switchboard.domain.model.JobResultOpened
 import llc.applabs.switchboard.domain.model.Approval
 import llc.applabs.switchboard.domain.model.RelaySetup
@@ -131,7 +133,12 @@ interface ChatRepository {
     suspend fun share(id: String, target: ShareTarget): ChatSession
     suspend fun delete(id: String)
     suspend fun messages(id: String): List<Message>
-    suspend fun send(sessionId: String, text: String): Run
+    suspend fun send(sessionId: String, text: String, attachmentIds: List<String> = emptyList()): Run
+    /** Add a file or photo to [sessionId] for the next message. */
+    suspend fun uploadAttachment(sessionId: String, file: PickedFile): Attachment
+    /** Remove a file added but not sent. */
+    suspend fun removeAttachment(attachmentId: String)
+    suspend fun attachmentBytes(attachmentId: String): ByteArray
     /** The run's events from [afterSeq], resuming by itself if the connection drops; ends with the terminal event. */
     fun events(runId: String, afterSeq: Long = 0): Flow<RunEvent>
     suspend fun stop(runId: String)

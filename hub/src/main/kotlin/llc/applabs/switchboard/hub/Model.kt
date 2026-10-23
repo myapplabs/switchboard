@@ -284,6 +284,8 @@ data class MessageOut(
     val clarifications: List<ClarificationOut>,
     @SerialName("model_label") val modelLabel: String?,
     @SerialName("created_at") val createdAt: String,
+    /** Files and photos sent with a person's message. */
+    val attachments: List<AttachmentOut> = emptyList(),
 )
 
 @Serializable
@@ -297,7 +299,9 @@ data class DeleteAccountIn(
 
 @Serializable
 data class RunInputIn(
-    val text: String,
+    val text: String = "",
+    /** Files added to the conversation first (`POST /sessions/{id}/attachments`), sent with this message. */
+    val attachments: List<String> = emptyList(),
     @SerialName("model_id") val modelId: String? = null,
 )
 

@@ -11,7 +11,7 @@ Switchboard accounts live on a hub, the server that you, or the person who invit
 
 ## What is deleted
 
-- The conversations you own, on the hub and on the agents.
+- The conversations you own, on the hub and on the agents, and the files and photos sent in them.
 - Your access to agents, your quick commands, and your sign-in on every device: your passkey registration, devices and notification tokens on the hub.
 - Your name, which is replaced with "Deleted member" wherever it still appears, such as the activity log (kept 90 days) and board cards you created. The cards stay, for the people you worked with.
 

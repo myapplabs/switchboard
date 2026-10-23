@@ -25,6 +25,9 @@ class SwitchboardApp : Application() {
             pushTokens = FcmTokens(),
             scanQr = { scanQrCode(this) },
             appVersion = BuildConfig.VERSION_NAME,
+            pickPhoto = { Pickers.pickPhoto(this) },
+            pickFile = { Pickers.pickFile(this) },
+            openFile = { name, type, bytes -> Pickers.open(this, name, type, bytes) },
         )
     }
 

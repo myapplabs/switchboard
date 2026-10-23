@@ -42,7 +42,8 @@ private fun serve(dataDir: java.nio.file.Path) {
     val config = HubConfig.load(dataDir)
     restrictDataDir(dataDir)
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    val hub = Hub(config, Db.open(dataDir.resolve("hub.db")), SecretBox.fromDataDir(dataDir), Hub.defaultAdapters(), scope)
+    val hub = Hub(config, Db.open(dataDir.resolve("hub.db")), SecretBox.fromDataDir(dataDir), Hub.defaultAdapters(), scope,
+        filesDir = dataDir.resolve("files"))
     hub.poller.start()
     hub.runs.recover()
     hub.conversations.startCleanup(scope)

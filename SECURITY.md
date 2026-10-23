@@ -23,6 +23,9 @@ Please report security problems privately: in this repository, open the **Securi
 - **Notifications:** carry no content, only that something is waiting.
 - **Job results:** an agent connects to the hub's relay with its own key (set up with a one-time command)
   and can only post into its own jobs' conversations, nothing else.
+- **Files in messages:** kept in the hub's data folder, readable only by the hub's account, and deleted with their
+  conversation. The agent gets a private download link per file that works for 7 days; anyone holding that link
+  can download the file until then, so agents shouldn't post those links anywhere public.
 - **Downloads:** releases are signed, and the installer checks the signature before installing.
 
 ## What it can't control
