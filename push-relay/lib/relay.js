@@ -6,7 +6,7 @@
 // the token); hubs must present it, so the relay can only reach phones that asked for it.
 import { createHmac, createSign, timingSafeEqual } from "node:crypto";
 
-export const KINDS = new Set(["approval_needed", "question_asked", "run_finished", "job_failed", "member_joined", "task_needs_you", "task_review"]);
+export const KINDS = new Set(["approval_needed", "question_asked", "run_finished", "job_failed", "job_finished", "member_joined", "task_needs_you", "task_review"]);
 const ID = /^[a-z]{2,6}_[a-z0-9]{6,40}$/;
 const MAX_TOKEN = 4096;
 

@@ -376,10 +376,11 @@ object NotifyKinds {
     const val QUESTION = "question_asked"
     const val RUN_FINISHED = "run_finished"
     const val JOB_FAILED = "job_failed"
+    const val JOB_FINISHED = "job_finished"
     const val MEMBER_JOINED = "member_joined"
     const val TASK_NEEDS_YOU = "task_needs_you"
     const val TASK_REVIEW = "task_review"
-    val all = listOf(APPROVAL, QUESTION, RUN_FINISHED, JOB_FAILED, MEMBER_JOINED, TASK_NEEDS_YOU, TASK_REVIEW)
+    val all = listOf(APPROVAL, QUESTION, RUN_FINISHED, JOB_FAILED, JOB_FINISHED, MEMBER_JOINED, TASK_NEEDS_YOU, TASK_REVIEW)
 }
 
 @Serializable
@@ -430,7 +431,22 @@ data class Job(
     /** Contract 0.4.0: the failure message of the last run, and the runs the hub has recorded (newest first). */
     @SerialName("last_error") val lastError: String? = null,
     @SerialName("recent_runs") val recentRuns: List<JobRun> = emptyList(),
+    /** Results are posted into a conversation here, through the agent's relay (contract 0.4.0). */
+    @SerialName("results_here") val resultsHere: Boolean = false,
+    @SerialName("results_session_id") val resultsSessionId: String? = null,
 )
+
+/** Whether an agent's job results can reach this hub (Hermes relay): off, waiting, connected, disconnected. */
+@Serializable
+data class RelayStatus(
+    val status: String = "off",
+    @SerialName("connected_at") val connectedAt: String? = null,
+    @SerialName("last_seen_at") val lastSeenAt: String? = null,
+)
+
+/** A one-time setup: [command] is what to run on the agent's computer. */
+@Serializable
+data class RelaySetup(val code: String, @SerialName("expires_at") val expiresAt: String, val path: String, val command: String = "")
 
 @Serializable
 data class JobRun(val at: String, val result: String? = null, val summary: String? = null)

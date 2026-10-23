@@ -89,6 +89,22 @@ give them a profile with only the access they need.
 Then describe what each agent is good at in **More → What agents are good at**. That helps people, and
 the coordinator, pick the right agent for each task.
 
+### Scheduled-job results in Switchboard (optional)
+
+The **Jobs** tab always shows when each job ran and whether it worked, and tells you when one fails. To
+also get each run's **results** in a conversation, the way Telegram shows them:
+
+1. In the app (as the owner): **Jobs → Job results from <agent> → Connect**. The app shows one command.
+2. On that agent's computer, in a terminal, as the account Hermes runs as, run the command. It saves a key
+   for this agent only in Hermes's settings and restarts its gateway. The command works once, for 10
+   minutes. For a named Hermes profile, put `HERMES_HOME=~/.hermes/profiles/<name>` before `sh`.
+3. When the app says the agent is connected, turn on **Send results here** for the jobs you want. Results
+   arrive in a conversation named after the job, with a notification. Reply there to ask about them.
+
+This uses Hermes's *relay*, which Hermes still marks experimental, so a Hermes update could change it. If
+results stop arriving, the Jobs tab says the agent isn't connected; run **Set up again**. The hub only
+lets an agent post into its own jobs' conversations.
+
 ## Step 4: Invite your people
 
 1. **Share the hub computer with them in Tailscale.** In the admin console, open **Machines**, click the

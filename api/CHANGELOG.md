@@ -19,6 +19,11 @@ M5, the task board (spec "Task board: agents working together"). Additive.
 - Job run history: `Job.last_error`, and `Job.recent_runs` filled in (newest first, up to 10; `result` may be
   null). The hub checks agents' jobs every minute and records each new run; a failed run sends `job_failed`
   (with `agent_id`, `job_id`) to the people who manage the agent's jobs.
+- Job results in Switchboard through Hermes's relay (EXPERIMENTAL in Hermes): `/agents/{id}/relay` (status, remove),
+  `/agents/{id}/relay/setup` (a one-time code; `GET /relay/setup/{code}` outside `/v1` serves the setup script),
+  the gateway's `/relay` WebSocket (outside `/v1`, Hermes relay contract v1: `send` and `typing` only).
+  `Job.results_here`, `Job.results_session_id`, `JobPatch.results_here` / `JobInput.results_here`; message kind
+  `job_result`; notification kind `job_finished` (`session_id`, `agent_id`, `job_id`); error `relay_not_set_up`.
 
 ## 0.3.0 — draft (2026-10-21)
 

@@ -518,6 +518,52 @@ paths:
                 properties:
                   items: { type: array, items: { $ref: "#/components/schemas/Model" } }
 
+  /agents/{agent_id}/relay:
+    get:
+      tags: [jobs]
+      operationId: getAgentRelay
+      summary: Whether the agent's scheduled-job results can reach this hub (owner/admin; 0.4.0)
+      description: |
+        Hermes never delivers cron results to its API server, so results come through Hermes's relay
+        (EXPERIMENTAL in Hermes): the agent's gateway dials the hub's `/relay` WebSocket (outside `/v1`) with
+        a per-agent secret and delivers to `relay:<delivery id>`. The hub accepts only `send` (into the
+        agent's own jobs' conversations) and `typing`.
+      x-release: v1
+      parameters: [{ $ref: "#/components/parameters/AgentId" }]
+      responses:
+        "200":
+          description: Status
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RelayStatus" }
+    delete:
+      tags: [jobs]
+      operationId: removeAgentRelay
+      summary: Forget the agent's relay secret (owner); its jobs' results stop reaching the hub
+      x-release: v1
+      parameters: [{ $ref: "#/components/parameters/AgentId" }]
+      responses:
+        "204": { description: 'Removed' }
+
+  /agents/{agent_id}/relay/setup:
+    post:
+      tags: [jobs]
+      operationId: createAgentRelaySetup
+      summary: A one-time setup code for the agent's computer (owner; 10 minutes, one use)
+      description: |
+        `curl -fsSL <hub><path> | sh` on the agent's computer (as the account Hermes runs as) writes
+        `GATEWAY_RELAY_URL`, `GATEWAY_RELAY_ID` and `GATEWAY_RELAY_SECRET` into Hermes's `.env` and restarts
+        its gateway. Fetching `GET /relay/setup/{code}` (outside `/v1`, no sign-in: the code is the credential)
+        uses the code and mints the secret, which is only ever in that response. A new setup replaces the old secret.
+      x-release: v1
+      parameters: [{ $ref: "#/components/parameters/AgentId" }]
+      responses:
+        "201":
+          description: Setup code
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RelaySetup" }
+
   /agents/{agent_id}/grants:
     get:
       tags: [agents]
@@ -1561,7 +1607,7 @@ components:
       type: object
       description: |
         Per notification kind on/off; missing = on. Kinds: approval_needed, question_asked, run_finished
-        (runs of 20 s or more, or failed), job_failed, member_joined, task_needs_you, task_review (0.4.0). Notices go through the AppLabs push relay
+        (runs of 20 s or more, or failed), job_failed, job_finished (0.4.0: a job's results were posted here), member_joined, task_needs_you, task_review (0.4.0). Notices go through the AppLabs push relay
         and carry no content (kind + opaque ids); the app fetches details from the hub.
       additionalProperties: { type: boolean }
       example: { approval_needed: true, job_failed: true, job_finished: false, shared_session_message: false }
@@ -1780,7 +1826,7 @@ components:
         role: { type: string, enum: [user, assistant] }
         kind:
           type: string
-          enum: [message, steer, clarification_answer]
+          enum: [message, steer, clarification_answer, job_result]
           default: message
           description: 'User messages: a normal message, guidance added mid-run, or an answer to the agent''s question. Open enum (0.2.0)'
         clarifications:
@@ -1909,6 +1955,8 @@ components:
               at: { type: string, format: date-time }
               result: { type: [string, "null"], enum: [success, failure, null] }
               summary: { type: [string, "null"], description: "The error, for a failed run" }
+        results_here: { type: boolean, description: 'Results are posted into a conversation here (0.4.0)' }
+        results_session_id: { type: [string, "null"], description: 'That conversation, for the person it belongs to' }
 
     JobInput:
       type: object
@@ -1918,6 +1966,7 @@ components:
         schedule: { type: string }
         prompt: { type: string, minLength: 1 }
         repeat: { type: integer, minimum: 1 }
+        results_here: { type: boolean, description: 'As in JobPatch (0.4.0)' }
 
     JobPatch:
       type: object
@@ -1926,6 +1975,27 @@ components:
         schedule: { type: string }
         prompt: { type: string, minLength: 1 }
         repeat: { type: [integer, "null"], minimum: 1 }
+        results_here:
+          type: boolean
+          description: |
+            Post each run's results into a conversation of the caller (0.4.0). Keeps the job's other delivery
+            targets. 409 `relay_not_set_up` when the agent's relay isn't set up.
+
+    RelayStatus:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [off, waiting, connected, disconnected], description: 'Open enum' }
+        connected_at: { type: [string, "null"], format: date-time }
+        last_seen_at: { type: [string, "null"], format: date-time }
+
+    RelaySetup:
+      type: object
+      required: [code, expires_at, path]
+      properties:
+        code: { type: string }
+        expires_at: { type: string, format: date-time }
+        path: { type: string, description: 'e.g. /relay/setup/ABCD…; the command is curl -fsSL <hub><path> | sh' }
 
     Activity:
       type: object

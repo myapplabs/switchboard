@@ -34,7 +34,7 @@ fun main(args: Array<String>) {
         "test-agent" -> testAgent(args.drop(1))
         "add-agent" -> addAgent(dataDir, args.drop(1))
         "version" -> println("switchboard-hub $HUB_VERSION (API $API_VERSION)")
-        else -> { System.err.println("usage: switchboard-hub [serve | setup-code | test-agent URL | add-agent --name NAME --url URL | dev-token [--name NAME] | version]"); exitProcess(2) }
+        else -> { System.err.println("usage: switchboard-hub [serve | setup-code | test-agent URL | add-agent --name NAME --url URL | dev-token [--name NAME] [--hours N] | version]"); exitProcess(2) }
     }
 }
 
@@ -95,7 +95,7 @@ private fun addAgent(dataDir: java.nio.file.Path, args: List<String>) {
         if (agents.records(hubId).any { it.name.equals(name.trim(), ignoreCase = true) }) { println("An agent named $name is already on this hub."); return }
         try {
             kotlinx.coroutines.runBlocking { agents.addForHub(hubId, AgentInput(opt("--type") ?: "hermes", name, url, listOf(ProfileInput(opt("--profile") ?: "main", null, key)))) }
-            println("Added $name. Restart the hub to start using it: systemctl --user restart switchboard-hub")
+            println("Added $name. Restart the hub to start using it.")
         } catch (e: HubException) {
             System.err.println("Couldn't add $name: ${e.detail ?: e.title}")
             e.test?.checks?.forEach { System.err.println("  ${if (it.ok) "ok  " else "FAIL"} ${it.name}${it.detail?.let { d -> " — $d" } ?: ""}") }

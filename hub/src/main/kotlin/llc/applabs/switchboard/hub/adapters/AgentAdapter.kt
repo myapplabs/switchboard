@@ -123,9 +123,11 @@ data class AgentJob(
     val repeat: Int?, val lastRunAt: String?, val lastResult: String?, val nextRunAt: String?,
     /** The agent's message for the last failed run, if it keeps one. */
     val lastError: String? = null,
+    /** Where the agent sends results (Hermes `deliver`: "local", "telegram", "relay:<id>", comma-separated). */
+    val deliver: String? = null,
 )
 
-data class JobFields(val name: String? = null, val schedule: String? = null, val prompt: String? = null, val repeat: Int? = null)
+data class JobFields(val name: String? = null, val schedule: String? = null, val prompt: String? = null, val repeat: Int? = null, val deliver: String? = null)
 
 interface AgentJobs {
     suspend fun jobs(target: ProfileTarget): List<AgentJob>

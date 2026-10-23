@@ -187,6 +187,14 @@ class FakeHermes(var key: String = KEY) {
                 jobList += job; respond("""{"job":$job}""", HttpStatusCode.OK, json)
             }
         }
+        req.method == HttpMethod.Patch && path.startsWith("/api/jobs/") -> {
+            val id = path.split('/')[3]; val i = jobList.indexOfFirst { it.contains("\"id\":\"$id\"") }
+            if (i < 0) respond("""{"error":"Job not found"}""", HttpStatusCode.NotFound, json)
+            else {
+                val merged = hubJson.parseToJsonElement(jobList[i]).jsonObject.toMutableMap().apply { putAll(body(req)) }
+                jobList[i] = JsonObject(merged).toString(); respond("""{"job":${jobList[i]}}""", HttpStatusCode.OK, json)
+            }
+        }
         path.endsWith("/pause") -> {
             val id = path.split('/')[3]; val i = jobList.indexOfFirst { it.contains("\"id\":\"$id\"") }
             if (i < 0) respond("""{"error":"Job not found"}""", HttpStatusCode.NotFound, json)

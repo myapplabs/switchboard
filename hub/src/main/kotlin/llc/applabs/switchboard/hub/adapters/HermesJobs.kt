@@ -58,6 +58,7 @@ class HermesJobs(private val http: HttpClient) : AgentJobs {
 
     private fun body(f: JobFields) = buildJsonObject {
         f.name?.let { put("name", it) }; f.schedule?.let { put("schedule", it) }; f.prompt?.let { put("prompt", it) }; f.repeat?.let { put("repeat", it) }
+        f.deliver?.let { put("deliver", it) }
     }
 
     private suspend fun send(block: suspend () -> HttpResponse): HttpResponse {
@@ -97,6 +98,7 @@ class HermesJobs(private val http: HttpClient) : AgentJobs {
                 lastResult = when (j.s("last_status")) { "ok", "success" -> "success"; "error", "failure", "failed" -> "failure"; else -> null },
                 nextRunAt = next?.let { utc(it, offset) },
                 lastError = j.s("last_error")?.trim()?.takeIf { it.isNotEmpty() }?.take(500),
+                deliver = j.s("deliver"),
             )
         }
 

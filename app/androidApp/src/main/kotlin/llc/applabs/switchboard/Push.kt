@@ -49,13 +49,14 @@ object Notifications {
         NotifyKinds.QUESTION to ("Question from an agent" to "An agent asked you something and is waiting for your answer."),
         NotifyKinds.RUN_FINISHED to ("Answer ready" to "An agent finished working on your request."),
         NotifyKinds.JOB_FAILED to ("Scheduled job failed" to "One of your agents' jobs didn't succeed."),
+        NotifyKinds.JOB_FINISHED to ("Job results ready" to "A scheduled job posted its results."),
         NotifyKinds.MEMBER_JOINED to ("New member" to "Someone accepted an invite to your hub."),
         NotifyKinds.TASK_NEEDS_YOU to ("A card needs you" to "A card on your board is stuck and waiting for you."),
         NotifyKinds.TASK_REVIEW to ("Ready for review" to "Agents finished a card. Review it to mark it done."),
     )
     private val channelNames = mapOf(
         NotifyKinds.APPROVAL to "Approvals", NotifyKinds.QUESTION to "Questions", NotifyKinds.RUN_FINISHED to "Finished answers",
-        NotifyKinds.JOB_FAILED to "Failed jobs", NotifyKinds.MEMBER_JOINED to "New members",
+        NotifyKinds.JOB_FAILED to "Failed jobs", NotifyKinds.JOB_FINISHED to "Job results", NotifyKinds.MEMBER_JOINED to "New members",
         NotifyKinds.TASK_NEEDS_YOU to "Cards that need you", NotifyKinds.TASK_REVIEW to "Cards to review",
     )
 
