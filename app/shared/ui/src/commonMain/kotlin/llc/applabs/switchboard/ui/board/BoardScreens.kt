@@ -168,7 +168,7 @@ fun TaskScreen(viewModel: TaskViewModel, onOpenChat: (String) -> Unit, onOpenTas
     var confirmDelete by remember { mutableStateOf(false) }
     LaunchedEffect(s.deleted) { if (s.deleted) onBack() }
     val t = s.task
-    Scaffold(topBar = { TopAppBar(title = { Text(t?.title ?: "Card", maxLines = 1) }, navigationIcon = { TextButton(onClick = onBack) { Text("Back") } }) }) { pad ->
+    Scaffold(topBar = { TopAppBar(title = { Text(t?.title ?: "Card", maxLines = 1) }) }) { pad ->
         if (t == null) { if (s.error != null) ErrorBanner(s.error!!, onRetry = null, modifier = Modifier.padding(pad).padding(16.dp)) else Loading(Modifier.padding(pad)); return@Scaffold }
         LazyColumn(Modifier.padding(pad).fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item {
@@ -324,7 +324,7 @@ fun NewTaskScreen(viewModel: NewTaskViewModel, allowSteps: Boolean, onCreated: (
     val s by viewModel.state.collectAsState()
     LaunchedEffect(s.created) { s.created?.let(onCreated) }
     Scaffold(topBar = {
-        TopAppBar(title = { Text("New card") }, navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
+        TopAppBar(title = { Text("New card") },
             actions = { TextButton(onClick = { viewModel.save() }, enabled = s.canSave, modifier = Modifier.testTag("card-save")) { Text(if (s.startNow) "Start" else "Save") } })
     }) { pad ->
         LazyColumn(Modifier.padding(pad).fillMaxSize().imePadding().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -396,7 +396,7 @@ fun NewTaskScreen(viewModel: NewTaskViewModel, allowSteps: Boolean, onCreated: (
 @Composable
 fun SpecialtiesScreen(viewModel: SpecialtiesViewModel, isOwner: Boolean, onBack: () -> Unit) {
     val s by viewModel.state.collectAsState()
-    Scaffold(topBar = { TopAppBar(title = { Text("What agents are good at") }, navigationIcon = { TextButton(onClick = onBack) { Text("Back") } }) }) { pad ->
+    Scaffold(topBar = { TopAppBar(title = { Text("What agents are good at") }) }) { pad ->
         LazyColumn(Modifier.padding(pad).fillMaxSize().imePadding().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Text("Shown when people pick an agent for a card, so work goes to the right model.",

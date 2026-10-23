@@ -62,8 +62,7 @@ fun MembersScreen(viewModel: MembersViewModel, me: Me, onAgentAccess: () -> Unit
     val s by viewModel.state.collectAsState()
     var inviting by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Member?>(null) }
-    Scaffold(topBar = { TopAppBar(title = { Text("Members") }, navigationIcon = { onBack?.let { TextButton(onClick = it) { Text("Back") } } },
-        actions = { TextButton(onClick = { inviting = true }) { Text("Invite") } }) }) { pad ->
+    Scaffold(topBar = { TopAppBar(title = { Text("Members") }, actions = { TextButton(onClick = { inviting = true }) { Text("Invite") } }) }) { pad ->
         LazyColumn(Modifier.padding(pad).fillMaxSize().padding(horizontal = 16.dp)) {
             s.error?.let { item { ErrorBanner(it, onRetry = { viewModel.load() }) } }
             item {
@@ -151,7 +150,7 @@ fun MembersScreen(viewModel: MembersViewModel, me: Me, onAgentAccess: () -> Unit
 fun AgentAccessScreen(viewModel: AgentAccessViewModel, onBack: () -> Unit) {
     val s by viewModel.state.collectAsState()
     val agent = s.agents.firstOrNull { it.id == s.agentId }
-    Scaffold(topBar = { TopAppBar(title = { Text("Agent access") }, navigationIcon = { TextButton(onClick = onBack) { Text("Back") } }) }) { pad ->
+    Scaffold(topBar = { TopAppBar(title = { Text("Agent access") }) }) { pad ->
         LazyColumn(Modifier.padding(pad).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -218,7 +217,7 @@ fun AgentAccessScreen(viewModel: AgentAccessViewModel, onBack: () -> Unit) {
 @Composable
 fun ActivityScreen(viewModel: ActivityViewModel, onBack: () -> Unit) {
     val s by viewModel.state.collectAsState()
-    Scaffold(topBar = { TopAppBar(title = { Text("Activity") }, navigationIcon = { TextButton(onClick = onBack) { Text("Back") } }) }) { pad ->
+    Scaffold(topBar = { TopAppBar(title = { Text("Activity") }) }) { pad ->
         LazyColumn(Modifier.padding(pad).padding(horizontal = 16.dp)) {
             s.error?.let { item { ErrorBanner(it, onRetry = { viewModel.load() }) } }
             item { Text("Who used which agent and model, and changes to members. Never the content of conversations.",

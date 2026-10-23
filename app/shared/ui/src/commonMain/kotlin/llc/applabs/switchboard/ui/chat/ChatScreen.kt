@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -57,6 +58,7 @@ import llc.applabs.switchboard.domain.model.ToolCall
 import llc.applabs.switchboard.ui.common.ErrorBanner
 import llc.applabs.switchboard.ui.common.Loading
 import llc.applabs.switchboard.ui.common.MarkdownText
+import llc.applabs.switchboard.ui.common.unwrapJobResult
 import llc.applabs.switchboard.ui.common.MonoChip
 import llc.applabs.switchboard.ui.common.StatusDot
 import llc.applabs.switchboard.ui.common.statusColor
@@ -79,7 +81,6 @@ fun ChatScreen(viewModel: ChatViewModel, myUserId: String, onBack: () -> Unit) {
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
-                navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
                 title = {
                     Column(Modifier.clickable(enabled = owner) { renaming = true }) {
                         Text(s.session?.title ?: "", maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium)
@@ -110,7 +111,8 @@ fun ChatScreen(viewModel: ChatViewModel, myUserId: String, onBack: () -> Unit) {
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize().imePadding()) {
             if (s.loading && s.session == null) { Loading(Modifier.weight(1f)); return@Column }
-            LazyColumn(state = list, modifier = Modifier.weight(1f).padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            LazyColumn(state = list, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(s.messages, key = { it.id }) { m ->
                     if (m.role == "user") UserBubble(m, mine = m.authorUserId == null || m.authorUserId == myUserId)
                     else AssistantMessage(m, onAnswer = viewModel::answer, onDecide = viewModel::decide)
@@ -164,7 +166,7 @@ private fun AssistantMessage(m: ChatMessage, onAnswer: (String, String) -> Unit,
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (m.kind == "job_result") Text("SCHEDULED JOB", style = MonoLabel, color = MaterialTheme.colorScheme.primary)
         m.tools.forEach { ToolCard(it) }
-        if (m.text.isNotEmpty()) SelectionContainer { MarkdownText(m.text) }
+        if (m.text.isNotEmpty()) SelectionContainer { MarkdownText(if (m.kind == "job_result") unwrapJobResult(m.text) else m.text) }
         m.questions.forEach { q -> QuestionCard(q, onAnswer) }
         m.approvals.forEach { a -> ApprovalRequestCard(a, onDecide) }
         when (m.status) {

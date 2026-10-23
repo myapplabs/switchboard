@@ -157,7 +157,7 @@ fun ForgeTicketScreen(viewModel: ForgeTicketViewModel, onBack: () -> Unit) {
     val s by viewModel.state.collectAsState()
     var rejecting by remember { mutableStateOf(false) }
     val c = s.card
-    Scaffold(topBar = { TopAppBar(title = { Text(c?.key ?: "FORGE ticket") }, navigationIcon = { TextButton(onClick = onBack) { Text("Back") } }) }) { pad ->
+    Scaffold(topBar = { TopAppBar(title = { Text(c?.key ?: "FORGE ticket") }) }) { pad ->
         if (c == null) { EmptyNote("Not on the board", "FORGE isn't connected, or the ticket is gone.", Modifier.padding(pad).padding(16.dp)); return@Scaffold }
         LazyColumn(Modifier.padding(pad).fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item { Text(c.title, style = MaterialTheme.typography.titleLarge) }
@@ -256,7 +256,7 @@ class ForgeLinksViewModel(private val forge: ForgeRepository) : ViewModel() {
 fun ForgeLinksScreen(viewModel: ForgeLinksViewModel, hubAddress: String, onBack: () -> Unit) {
     val s by viewModel.state.collectAsState()
     var naming by remember { mutableStateOf(false) }
-    Scaffold(topBar = { TopAppBar(title = { Text("FORGE") }, navigationIcon = { TextButton(onClick = onBack) { Text("Back") } }) }) { pad ->
+    Scaffold(topBar = { TopAppBar(title = { Text("FORGE") }) }) { pad ->
         LazyColumn(Modifier.padding(pad).fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item {
                 Text("Show your FORGE tickets on the board and decide FORGE's gates here. FORGE keeps running where it runs; " +

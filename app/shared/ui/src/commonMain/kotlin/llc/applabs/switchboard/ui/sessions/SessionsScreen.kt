@@ -46,6 +46,7 @@ import llc.applabs.switchboard.domain.LiveEvents
 import llc.applabs.switchboard.domain.model.ChatSession
 import llc.applabs.switchboard.domain.model.UserEvent
 import llc.applabs.switchboard.ui.common.EmptyNote
+import llc.applabs.switchboard.ui.common.plainText
 import llc.applabs.switchboard.ui.common.ErrorBanner
 import llc.applabs.switchboard.ui.common.friendly
 import llc.applabs.switchboard.ui.common.shortTime
@@ -85,18 +86,20 @@ class SessionsViewModel(private val chat: ChatRepository, live: LiveEvents) : Vi
 fun SessionsScreen(viewModel: SessionsViewModel, agents: AgentsRepository, myUserId: String, onOpen: (String) -> Unit) {
     val s by viewModel.state.collectAsState()
     val agentList by agents.agents.collectAsState()
-    Scaffold(topBar = { TopAppBar(title = { Text("Conversations") }) }) { pad ->
+    Scaffold(topBar = { TopAppBar(title = { Text("Chats") }) }) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
             OutlinedTextField(s.query, viewModel::query, placeholder = { Text("Search titles and messages") }, singleLine = true,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp))
             s.error?.let { ErrorBanner(it, onRetry = { viewModel.load() }, modifier = Modifier.padding(horizontal = 16.dp)) }
+            // Conversations opened but never used (nothing sent, nothing running) only clutter the list.
+            val shown = s.sessions.filter { it.lastMessagePreview != null || it.activeRunId != null }
             PullToRefreshBox(isRefreshing = s.loading && s.sessions.isNotEmpty(), onRefresh = { viewModel.load() }, modifier = Modifier.fillMaxSize()) {
                 LazyColumn(Modifier.fillMaxSize()) {
-                    if (!s.loading && s.sessions.isEmpty()) item {
+                    if (!s.loading && shown.isEmpty()) item {
                         EmptyNote(if (s.query.isBlank()) "No conversations yet" else "Nothing found",
                             if (s.query.isBlank()) "Tap an agent on the Agents tab to start one." else "Try other words.")
                     }
-                    items(s.sessions, key = { it.id }) { c ->
+                    items(shown, key = { it.id }) { c ->
                         val agentName = agentList.firstOrNull { it.id == c.agentId }?.name ?: "agent"
                         if (c.ownerUserId == myUserId) {
                             val dismiss = rememberSwipeToDismissBoxState()
@@ -128,6 +131,6 @@ private fun SessionRow(c: ChatSession, agentName: String, onOpen: (String) -> Un
             if (c.sharedWith.isShared) Text("SHARED", style = MonoLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (c.activeRunId != null) Text("WORKING", style = MonoLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        c.lastMessagePreview?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+        c.lastMessagePreview?.let { Text(plainText(it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis) }
     }
 }

@@ -23,4 +23,6 @@ interface AppDependencies {
     val deviceName: String
     /** Scans a QR code with the camera and returns its text (null: cancelled); null where scanning isn't available. */
     val scanQr: (suspend () -> String?)? get() = null
+    /** This app's version, as people see it (e.g. "0.3.4"); empty where unknown. */
+    val appVersion: String get() = ""
 }

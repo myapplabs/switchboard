@@ -1,8 +1,22 @@
 package llc.applabs.switchboard.ui
 
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -11,7 +25,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -19,7 +33,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import llc.applabs.design.AppLabsTheme
-import llc.applabs.design.tokens.MonoLabel
 import llc.applabs.switchboard.domain.AppDependencies
 import llc.applabs.switchboard.domain.AuthState
 import llc.applabs.switchboard.domain.model.Me
@@ -107,13 +120,7 @@ private fun Main(deps: AppDependencies, me: Me, hubUrl: String, openSession: Str
         Routes.SETTINGS to "More",
     )
     Scaffold(bottomBar = {
-        if (route in tabs.map { it.first }) NavigationBar {
-            tabs.forEach { (r, label) ->
-                NavigationBarItem(selected = route == r, onClick = { nav.navigate(r) { popUpTo(Routes.AGENTS); launchSingleTop = true } },
-                    icon = { Text(label.first().toString(), style = MonoLabel, modifier = Modifier.clearAndSetSemantics {}) }, label = { Text(label) },
-                    modifier = Modifier.testTag("tab-$r"))
-            }
-        }
+        if (route in tabs.map { it.first }) TabBar(tabs, route) { r -> nav.navigate(r) { popUpTo(Routes.AGENTS); launchSingleTop = true } }
     }) { pad ->
         NavHost(nav, startDestination = Routes.AGENTS, modifier = Modifier.padding(bottom = pad.calculateBottomPadding())) {
             composable(Routes.AGENTS) {
@@ -138,7 +145,8 @@ private fun Main(deps: AppDependencies, me: Me, hubUrl: String, openSession: Str
                 val vm = viewModel { SettingsViewModel(deps.auth, deps.members, deps.push) }
                 SettingsScreen(vm, me, hubUrl, onMembers = { nav.navigate(Routes.MEMBERS) }.takeIf { me.permissions.manageMembers },
                     onSpecialties = { nav.navigate(Routes.SPECIALTIES) }.takeIf { me.permissions.manageMembers },
-                    onForge = { nav.navigate(Routes.FORGE_LINKS) }.takeIf { me.role != llc.applabs.switchboard.domain.model.Roles.RESTRICTED })
+                    onForge = { nav.navigate(Routes.FORGE_LINKS) }.takeIf { me.role != llc.applabs.switchboard.domain.model.Roles.RESTRICTED },
+                    appVersion = deps.appVersion)
             }
             composable(Routes.BOARD) {
                 val vm = viewModel { llc.applabs.switchboard.ui.board.BoardViewModel(deps.tasks, deps.agents,
@@ -190,6 +198,26 @@ private fun Main(deps: AppDependencies, me: Me, hubUrl: String, openSession: Str
             composable(Routes.ACTIVITY) {
                 val vm = viewModel { ActivityViewModel(deps.members, deps.agents) }
                 ActivityScreen(vm, onBack = { nav.back() })
+            }
+        }
+    }
+}
+
+/** The bottom tabs: words only, each an equal share of the width, the current one highlighted. */
+@Composable
+private fun TabBar(tabs: List<Pair<String, String>>, route: String?, onSelect: (String) -> Unit) {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+        Row(Modifier.fillMaxWidth().navigationBarsPadding().height(64.dp).selectableGroup().padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            tabs.forEach { (r, label) ->
+                val selected = route == r
+                Box(Modifier.weight(1f).fillMaxHeight().selectable(selected, role = Role.Tab, onClick = { onSelect(r) }).testTag("tab-$r"),
+                    contentAlignment = Alignment.Center) {
+                    Text(label, maxLines = 1, style = MaterialTheme.typography.labelLarge.copy(fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal),
+                        color = if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.background(if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent, RoundedCornerShape(50))
+                            .padding(horizontal = 12.dp, vertical = 6.dp))
+                }
             }
         }
     }

@@ -20,6 +20,7 @@ class SwitchboardApp : Application() {
             deviceName = (Build.MODEL ?: "Android").take(60),
             pushTokens = FcmTokens(),
             scanQr = { scanQrCode(this) },
+            appVersion = BuildConfig.VERSION_NAME,
         )
     }
 

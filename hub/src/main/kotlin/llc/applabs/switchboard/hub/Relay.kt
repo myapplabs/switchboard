@@ -217,6 +217,7 @@ class Relay(
         val d = db.query("SELECT hub_id, job_id, job_name, user_id, session_id FROM job_delivery WHERE id = ? AND agent_id = ?", deliveryId, agentId) {
             D(it.getString(1), it.getString(2), it.getString(3), it.getString(4), it.getString(5)) }.firstOrNull() ?: return null
         if (text.isBlank()) return null
+        val body = unwrap(text)
         val user = accounts.user(d.userId) ?: return null
         val agent = agents.record(agentId) ?: return null
         // The person who turned it on must still be allowed to use the agent.
@@ -228,8 +229,8 @@ class Relay(
         val id = newId("msg")
         val t = now()
         db.update("INSERT INTO message (id, hub_id, session_id, role, kind, text, status, created_at) VALUES (?, ?, ?, 'assistant', 'job_result', ?, 'complete', ?)",
-            id, d.hubId, sessionId, text, t)
-        db.update("UPDATE chat_session SET last_message_preview = ?, updated_at = ? WHERE id = ?", text.take(200), t, sessionId)
+            id, d.hubId, sessionId, body, t)
+        db.update("UPDATE chat_session SET last_message_preview = ?, updated_at = ? WHERE id = ?", body.take(200), t, sessionId)
         db.update("UPDATE job_delivery SET last_delivered_at = ? WHERE id = ?", t, deliveryId)
         conversations.changed(sessionId)
         notifier?.notify(listOf(d.userId), "job_finished", d.hubId, mapOf("session_id" to sessionId, "agent_id" to agentId, "job_id" to d.jobId))
@@ -291,6 +292,13 @@ class Relay(
         /** Only characters a URL host and port can have, so nothing else ends up in the script. */
         fun safeHubUrl(scheme: String, host: String): String? =
             host.takeIf { it.matches(Regex("[A-Za-z0-9.\\-]+(:[0-9]{1,5})?")) }?.let { "$scheme://$it" }
+
+        private val CRON_HEADER = Regex("""\ACronjob Response: [^\n]*\n\(job_id: [^)\n]*\)\n-{3,}\s*\n""")
+        private val CRON_FOOTER = Regex("""\n+To stop or manage this job, send me a new message[^\n]*\s*\z""")
+
+        /** A job result without Hermes's chat wrapper (`cron.wrap_response`): the job and id are in the conversation already. */
+        internal fun unwrap(text: String): String =
+            text.replace(CRON_HEADER, "").replace(CRON_FOOTER, "").trim().ifBlank { text }
 
         internal fun script(hubUrl: String, gatewayId: String, secret: String) = """
             |#!/bin/sh
