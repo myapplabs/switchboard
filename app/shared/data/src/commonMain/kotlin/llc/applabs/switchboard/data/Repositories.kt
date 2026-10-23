@@ -29,6 +29,7 @@ import llc.applabs.switchboard.domain.AuthState
 import llc.applabs.switchboard.domain.ChatRepository
 import llc.applabs.switchboard.domain.ControlRepository
 import llc.applabs.switchboard.domain.model.Approval
+import llc.applabs.switchboard.domain.model.JobResultOpened
 import llc.applabs.switchboard.domain.model.RelaySetup
 import llc.applabs.switchboard.domain.model.RelayStatus
 import llc.applabs.switchboard.domain.model.AskAllItem
@@ -257,6 +258,8 @@ class ControlRepositoryImpl(private val client: HubClient) : ControlRepository {
     override suspend fun deleteJob(agentId: String, jobId: String) = client.call<Unit>(HttpMethod.Delete, "/agents/$agentId/jobs/$jobId")
     override suspend fun setResultsHere(agentId: String, jobId: String, on: Boolean): AgentJob =
         client.call(HttpMethod.Patch, "/agents/$agentId/jobs/$jobId", buildJsonObject { put("results_here", on) })
+    override suspend fun openJobResult(agentId: String, jobId: String, at: String?): JobResultOpened =
+        client.call(HttpMethod.Post, "/agents/$agentId/jobs/$jobId/result", buildJsonObject { at?.let { put("at", it) } })
     override suspend fun relayStatus(agentId: String): RelayStatus = client.call(HttpMethod.Get, "/agents/$agentId/relay")
     override suspend fun relaySetup(agentId: String): RelaySetup {
         val s = client.call<RelaySetup>(HttpMethod.Post, "/agents/$agentId/relay/setup", "{}")

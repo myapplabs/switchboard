@@ -1,6 +1,8 @@
 package llc.applabs.switchboard.ui.jobs
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -75,6 +77,8 @@ data class JobsUiState(
     val relay: Map<String, RelayStatus> = emptyMap(),
     /** An open setup: the agent and the command to run on its computer. */
     val setup: Pair<String, RelaySetup>? = null,
+    /** A result being opened ("agentId/jobId"), so its button waits. */
+    val opening: String? = null,
 ) {
     val visible get() = jobs.filter {
         when (filter) { JobFilter.All -> true; JobFilter.Paused -> it.state == "paused"; JobFilter.Failed -> it.lastResult == "failure" }
@@ -110,6 +114,16 @@ class JobsViewModel(private val agents: AgentsRepository, private val control: C
     fun create(agentId: String, input: JobInput) = act { control.createJob(agentId, input) }
     fun resultsHere(job: Job, on: Boolean) = act { control.setResultsHere(job.agentId, job.id, on) }
 
+    /** Open a conversation in which the agent shows a run's result ([at]: one of `recentRuns`, null: the last). */
+    fun openResult(job: Job, at: String?, onOpen: (String) -> Unit) = viewModelScope.launch {
+        val key = "${job.agentId}/${job.id}"
+        if (_state.value.opening != null) return@launch
+        _state.update { it.copy(opening = key, error = null) }
+        try { onOpen(control.openJobResult(job.agentId, job.id, at).sessionId) }
+        catch (e: Exception) { _state.update { it.copy(error = e.friendly()) } }
+        finally { _state.update { it.copy(opening = null) } }
+    }
+
     /** Start (or redo) an agent's setup; watches until the agent connects. */
     fun connect(agentId: String) = viewModelScope.launch {
         if (_state.value.setup?.first == agentId) return@launch   // already showing a command: keep it
@@ -140,6 +154,7 @@ fun JobsScreen(viewModel: JobsViewModel, isOwner: Boolean = false, onOpenChat: (
     var creating by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf<Job?>(null) }
     val manage = { job: Job -> s.agents.firstOrNull { it.id == job.agentId }?.myPermissions?.manageJobs == true }
+    val canChat = { job: Job -> s.agents.firstOrNull { it.id == job.agentId }?.myPermissions?.chat == true }
     Scaffold(topBar = {
         TopAppBar(title = { Text("Jobs") }, actions = {
             if (s.agents.any { it.myPermissions.manageJobs }) TextButton(onClick = { creating = true }, modifier = Modifier.testTag("new-job")) { Text("New job") }
@@ -163,7 +178,9 @@ fun JobsScreen(viewModel: JobsViewModel, isOwner: Boolean = false, onOpenChat: (
                         JobCard(job, agentName = s.agents.firstOrNull { it.id == job.agentId }?.name ?: "", manage = manage(job),
                             relayStatus = s.relay[job.agentId]?.status,
                             onAction = { viewModel.action(job, it) }, onDelete = { confirmDelete = job },
-                            onResultsHere = { viewModel.resultsHere(job, it) }, onOpenResults = { job.resultsSessionId?.let(onOpenChat) })
+                            onResultsHere = { viewModel.resultsHere(job, it) }, onOpenResults = { job.resultsSessionId?.let(onOpenChat) },
+                            canShowResult = canChat(job), opening = s.opening == "${job.agentId}/${job.id}",
+                            onShowResult = { at -> viewModel.openResult(job, at, onOpenChat) })
                     }
                 }
             }
@@ -183,7 +200,8 @@ fun JobsScreen(viewModel: JobsViewModel, isOwner: Boolean = false, onOpenChat: (
 
 @Composable
 private fun JobCard(job: Job, agentName: String, manage: Boolean, relayStatus: String?, onAction: (String) -> Unit, onDelete: () -> Unit,
-                    onResultsHere: (Boolean) -> Unit, onOpenResults: () -> Unit) {
+                    onResultsHere: (Boolean) -> Unit, onOpenResults: () -> Unit,
+                    canShowResult: Boolean = false, opening: Boolean = false, onShowResult: (String?) -> Unit = {}) {
     Card(Modifier.fillMaxWidth().testTag("job-${job.name}")) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -212,7 +230,11 @@ private fun JobCard(job: Job, agentName: String, manage: Boolean, relayStatus: S
                     Text("Recent", style = MonoLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     // Oldest on the left, newest on the right, like a timeline.
                     job.recentRuns.reversed().forEach { r ->
-                        StatusDot(when (r.result) { "success" -> StatusColors.online(); "failure" -> StatusColors.problem(); else -> StatusColors.offline() }, Modifier.size(8.dp))
+                        // Tapping a run shows its result (a touch target bigger than the dot).
+                        Box(Modifier.size(24.dp).then(if (canShowResult && !opening) Modifier.clickable(onClickLabel = "Show this run's result") { onShowResult(r.at) } else Modifier),
+                            contentAlignment = Alignment.Center) {
+                            StatusDot(when (r.result) { "success" -> StatusColors.online(); "failure" -> StatusColors.problem(); else -> StatusColors.offline() }, Modifier.size(8.dp))
+                        }
                     }
                 }
             }
@@ -224,7 +246,11 @@ private fun JobCard(job: Job, agentName: String, manage: Boolean, relayStatus: S
                 Text("Send results here", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                 Switch(job.resultsHere, onCheckedChange = onResultsHere, modifier = Modifier.testTag("results-${job.name}"))
             }
-            if (job.resultsSessionId != null) TextButton(onClick = onOpenResults) { Text("Open results") }
+            Row {
+                if (canShowResult && job.lastRunAt != null) TextButton(onClick = { onShowResult(null) }, enabled = !opening,
+                    modifier = Modifier.testTag("show-result-${job.name}")) { Text(if (opening) "Opening…" else "Show last result") }
+                if (job.resultsSessionId != null) TextButton(onClick = onOpenResults) { Text("Open results") }
+            }
             if (manage) Row {
                 if (job.state == "paused") TextButton(onClick = { onAction("resume") }) { Text("Resume") } else TextButton(onClick = { onAction("pause") }) { Text("Pause") }
                 TextButton(onClick = { onAction("run") }) { Text(if (job.lastResult == "failure") "Retry now" else "Run now") }

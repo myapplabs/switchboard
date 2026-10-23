@@ -1005,6 +1005,39 @@ paths:
       responses:
         "204": { description: 'Deleted' }
 
+  /agents/{agent_id}/jobs/{job_id}/result:
+    post:
+      tags: [jobs]
+      operationId: openJobResult
+      summary: Show a run's result in a new conversation
+      description: >-
+        Works whatever the job's delivery, without the relay. The agent keeps every run's output; this opens a
+        conversation (titled "Result: <job name>") and asks the agent to show that run's saved output. Needs chat
+        access to the agent. `at` must be the job's last run or one of its `recent_runs`.
+      x-release: v1
+      parameters:
+        - { $ref: "#/components/parameters/AgentId" }
+        - { $ref: "#/components/parameters/JobId" }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                at: { type: string, format: date-time, description: "A run's time (`recent_runs[].at`); omitted: the last run" }
+      responses:
+        "201":
+          description: The conversation and the run that shows the result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [session_id, run_id]
+                properties:
+                  session_id: { type: string }
+                  run_id: { type: string }
+        "409": { $ref: "#/components/responses/Problem" }
+
   /agents/{agent_id}/jobs/{job_id}/{action}:
     post:
       tags: [jobs]
