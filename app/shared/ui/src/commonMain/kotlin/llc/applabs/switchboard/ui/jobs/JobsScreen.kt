@@ -160,7 +160,7 @@ fun JobsScreen(viewModel: JobsViewModel, isOwner: Boolean = false, onOpenChat: (
                     }
                     items(s.visible, key = { "${it.agentId}/${it.id}" }) { job ->
                         JobCard(job, agentName = s.agents.firstOrNull { it.id == job.agentId }?.name ?: "", manage = manage(job),
-                            relayReady = (s.relay[job.agentId]?.status ?: "off") != "off" || job.resultsHere,
+                            relayStatus = s.relay[job.agentId]?.status,
                             onAction = { viewModel.action(job, it) }, onDelete = { confirmDelete = job },
                             onResultsHere = { viewModel.resultsHere(job, it) }, onOpenResults = { job.resultsSessionId?.let(onOpenChat) })
                     }
@@ -181,7 +181,7 @@ fun JobsScreen(viewModel: JobsViewModel, isOwner: Boolean = false, onOpenChat: (
 }
 
 @Composable
-private fun JobCard(job: Job, agentName: String, manage: Boolean, relayReady: Boolean, onAction: (String) -> Unit, onDelete: () -> Unit,
+private fun JobCard(job: Job, agentName: String, manage: Boolean, relayStatus: String?, onAction: (String) -> Unit, onDelete: () -> Unit,
                     onResultsHere: (Boolean) -> Unit, onOpenResults: () -> Unit) {
     Card(Modifier.fillMaxWidth().testTag("job-${job.name}")) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -215,7 +215,11 @@ private fun JobCard(job: Job, agentName: String, manage: Boolean, relayReady: Bo
                     }
                 }
             }
-            if (manage && relayReady) Row(verticalAlignment = Alignment.CenterVertically) {
+            // Only a connected agent's jobs can be switched over: until then Hermes refuses to run them.
+            if (job.resultsHere && relayStatus != null && relayStatus != "connected")
+                Text("$agentName isn't connected for job results, so Hermes may not run this job. Connect it again, or turn this off.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            if (manage && (relayStatus == "connected" || job.resultsHere)) Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Send results here", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                 Switch(job.resultsHere, onCheckedChange = onResultsHere, modifier = Modifier.testTag("results-${job.name}"))
             }

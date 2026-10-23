@@ -95,7 +95,9 @@ class HermesJobs(private val http: HttpClient) : AgentJobs {
                 id = j.s("id") ?: "", name = j.s("name") ?: "", prompt = j.s("prompt"), schedule = schedule, state = state,
                 repeat = (j["repeat"] as? JsonObject)?.get("times")?.let { runCatching { it.jsonPrimitive.intOrNull }.getOrNull() },
                 lastRunAt = j.s("last_run_at")?.let { utc(it, offset) },
-                lastResult = when (j.s("last_status")) { "ok", "success" -> "success"; "error", "failure", "failed" -> "failure"; else -> null },
+                // blocked_config & co.: Hermes refused to run it (bad delivery target, missing credentials …).
+                lastResult = when (val st = j.s("last_status")) { null -> null; "ok", "success" -> "success"; "error", "failure", "failed" -> "failure"
+                    else -> if (st.startsWith("blocked")) "failure" else null },
                 nextRunAt = next?.let { utc(it, offset) },
                 lastError = j.s("last_error")?.trim()?.takeIf { it.isNotEmpty() }?.take(500),
                 deliver = j.s("deliver"),

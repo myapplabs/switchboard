@@ -100,11 +100,10 @@ class RelayTest {
             assertEquals(Relay.UNAUTHORIZED, closeReason.await()?.code, "a wrong secret is refused")
         }
 
-        val on = call("patch", "/v1/agents/$agentId/jobs/j1", """{"results_here":true}""").json()
-        assertEquals("true", on.str("results_here"))
-        val deliver = hubJson.parseToJsonElement(hermes.jobList[0]).jsonObject.str("deliver")
-        val deliveryId = deliver.substringAfter("telegram,relay:")
-        assertTrue(deliver.startsWith("telegram,relay:jd_"), "keeps Telegram: $deliver")
+        val early = call("patch", "/v1/agents/$agentId/jobs/j1", """{"results_here":true}""")
+        assertEquals(HttpStatusCode.Conflict, early.status, "not connected yet: Hermes would refuse to run the job")
+        assertTrue("relay:" !in hermes.jobList[0], "job untouched")
+        lateinit var deliveryId: String
 
         ws.webSocket("/relay", request = { header("Authorization", "Bearer ${hermesToken(gatewayId, secret)}") }) {
             send(Frame.Text("""{"type":"hello","platform":"relay","botId":""}""" + "\n"))
@@ -114,6 +113,12 @@ class RelayTest {
             assertEquals(listOf("send", "typing"), desc["supported_ops"]!!.jsonArray.map { it.jsonPrimitive.content })
             assertEquals("1", desc.str("contract_version"))
             assertEquals("connected", call("get", "/v1/agents/$agentId/relay").json().str("status"))
+
+            val on = call("patch", "/v1/agents/$agentId/jobs/j1", """{"results_here":true}""").json()
+            assertEquals("true", on.str("results_here"))
+            val deliver = hubJson.parseToJsonElement(hermes.jobList[0]).jsonObject.str("deliver")
+            deliveryId = deliver.substringAfter("telegram,relay:")
+            assertTrue(deliver.startsWith("telegram,relay:jd_"), "keeps Telegram: $deliver")
 
             suspend fun outbound(action: String): JsonObject {
                 send(Frame.Text("""{"type":"outbound","requestId":"r1","action":$action}""" + "\n"))
@@ -143,6 +148,12 @@ class RelayTest {
         val input = hermes.runBodies.last().str("input")
         assertTrue(input.startsWith("[Your scheduled job posted this here earlier:]\n**Today:** 3 stories") && input.endsWith("tell me more about the second"), input)
 
+        // A job Hermes refused to run shows as failed, with Hermes's reason.
+        hermes.jobList[1] = hermes.jobList[1].replace("\"last_status\":\"error\"", "\"last_status\":\"blocked_config\",\"last_error\":\"[blocked_config] delivery platform 'relay' is not a known cron delivery target\"")
+        val blocked = call("get", "/v1/agents/$agentId/jobs/j2").json()
+        assertEquals("failure", blocked.str("last_result"))
+        assertTrue(blocked.str("last_error").startsWith("[blocked_config]"))
+
         val off = call("patch", "/v1/agents/$agentId/jobs/j1", """{"results_here":false}""").json()
         assertEquals("false", off.str("results_here"))
         assertEquals("telegram", hubJson.parseToJsonElement(hermes.jobList[0]).jsonObject.str("deliver"))
@@ -159,7 +170,9 @@ class RelayTest {
         val again = setUp()
         assertNull(hub.relay.authenticate("Bearer ${hermesToken(gatewayId, secret)}"), "a new setup replaces the old secret")
         assertNotNull(hub.relay.authenticate("Bearer ${hermesToken(again.first, again.second)}"))
+        hermes.jobList[0] = hermes.jobList[0].replace("\"enabled\":true", "\"enabled\":true,\"deliver\":\"relay:jd_left_over\"")
         assertEquals(HttpStatusCode.NoContent, call("delete", "/v1/agents/$agentId/relay").status)
+        assertEquals("local", hubJson.parseToJsonElement(hermes.jobList[0]).jsonObject.str("deliver"), "disconnecting switches jobs back")
         assertNull(hub.relay.authenticate("Bearer ${hermesToken(again.first, again.second)}"), "removed")
         val refused = call("patch", "/v1/agents/$agentId/jobs/j1", """{"results_here":true}""")
         assertEquals(HttpStatusCode.Conflict to "relay_not_set_up", refused.status to refused.json().str("code"))
