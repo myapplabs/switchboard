@@ -1,6 +1,8 @@
 package llc.applabs.design
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -34,10 +36,15 @@ fun AppLabsTheme(
 ) {
     val colorScheme = if (useDarkTheme) AppDarkColorScheme else AppLightColorScheme
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = AppTypography,
-        shapes = AppLabsShapes,
-        content = content,
-    )
+    CompositionLocalProvider(LocalDarkTheme provides useDarkTheme) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = AppTypography,
+            shapes = AppLabsShapes,
+            content = content,
+        )
+    }
 }
+
+/** Whether the app is showing its dark theme (the person's choice, or the system's): for colors outside the scheme. */
+val LocalDarkTheme = staticCompositionLocalOf { true }

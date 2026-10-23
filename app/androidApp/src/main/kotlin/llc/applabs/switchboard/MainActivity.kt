@@ -7,12 +7,14 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import llc.applabs.switchboard.domain.AuthState
+import llc.applabs.switchboard.domain.ThemeMode
 import llc.applabs.switchboard.ui.App
 
 class MainActivity : ComponentActivity() {
@@ -29,9 +31,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Pickers.register(this)
-        enableEdgeToEdge()
-        handle(intent)
         val container = (application as SwitchboardApp).container
+        systemBars(container.themeMode.value)
+        handle(intent)
+        // The status and navigation bar icons follow the app's theme (light icons on dark, dark on light).
+        lifecycleScope.launch { container.themeMode.collect { systemBars(it) } }
         setContent {
             App(deps = container, inviteLink = inviteLink.value, openSession = openSession.value, onSessionOpened = { openSession.value = null },
                 openTask = openTask.value, onTaskOpened = { openTask.value = null }, pairLink = pairLink.value)
@@ -44,6 +48,16 @@ class MainActivity : ComponentActivity() {
                     askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
+    }
+
+    private fun systemBars(mode: ThemeMode) {
+        val clear = android.graphics.Color.TRANSPARENT
+        val style = when (mode) {
+            ThemeMode.SYSTEM -> SystemBarStyle.auto(clear, clear)
+            ThemeMode.LIGHT -> SystemBarStyle.light(clear, clear)
+            ThemeMode.DARK -> SystemBarStyle.dark(clear)
+        }
+        enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
     }
 
     override fun onNewIntent(intent: Intent) {

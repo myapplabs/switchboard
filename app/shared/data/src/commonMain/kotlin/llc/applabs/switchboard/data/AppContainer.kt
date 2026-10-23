@@ -1,5 +1,8 @@
 package llc.applabs.switchboard.data
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import llc.applabs.switchboard.domain.ThemeMode
 import io.ktor.client.engine.HttpClientEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -17,7 +20,7 @@ import kotlinx.coroutines.launch
  */
 class AppContainer(
     passkeys: Passkeys,
-    store: SecureStore,
+    private val store: SecureStore,
     override val devSignIn: Boolean,
     override val deviceName: String,
     engine: HttpClientEngine? = null,
@@ -30,6 +33,10 @@ class AppContainer(
 ) : AppDependencies {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val client = HubClient(engine, TokenStore(store))
+    private val _themeMode = MutableStateFlow(
+        runCatching { store.get(THEME_KEY)?.let { ThemeMode.valueOf(it) } }.getOrNull() ?: ThemeMode.SYSTEM)
+    override val themeMode: StateFlow<ThemeMode> = _themeMode
+    override fun setThemeMode(mode: ThemeMode) { store.set(THEME_KEY, mode.name); _themeMode.value = mode }
     private val authImpl = AuthRepositoryImpl(client, passkeys)
     private val liveImpl = LiveEventsImpl(client, authImpl.state, scope).also { it.onRevoked = authImpl::revoked }
 
@@ -47,4 +54,6 @@ class AppContainer(
         // Register for push whenever someone signs in (best effort).
         scope.launch { authImpl.state.collect { if (it is AuthState.SignedIn) runCatching { push.register() } } }
     }
+
+    private companion object { const val THEME_KEY = "theme_mode" }
 }
