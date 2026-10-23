@@ -1,5 +1,13 @@
 package llc.applabs.switchboard.ui.chat
 
+import androidx.compose.foundation.interaction.DragInteraction
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -95,24 +103,41 @@ fun ChatScreen(viewModel: ChatViewModel, myUserId: String, onBack: () -> Unit,
     val list = rememberLazyListState()
     LaunchedEffect(Unit) { viewModel.effects.collect { if (it is ChatUiEffect.Toast) snackbar.showSnackbar(it.text) } }
     LaunchedEffect(s.deleted) { if (s.deleted) onBack() }
-    // Always to the very end of the newest message (a long answer included): straight there when the chat opens,
-    // smoothly as answers stream in.
+    // Following the conversation: on while you're at the end (the list keeps up as answers stream in), off once you
+    // scroll up to read (nothing moves under you; a button takes you back down). Opening the chat or sending turns it on.
     var opened by remember { mutableStateOf(false) }
+    var follow by remember { mutableStateOf(true) }
+    val scope = rememberCoroutineScope()
     val lastIndex = s.messages.size - 1 + (if (s.running) 1 else 0)   // the run's status line comes last while it runs
     val currentLast by rememberUpdatedState(lastIndex)
     LaunchedEffect(s.messages.size, s.messages.lastOrNull()?.text?.length, s.running) {
         if (s.messages.isEmpty()) return@LaunchedEffect
         if (!opened) { list.scrollToItem(lastIndex, Int.MAX_VALUE); opened = true }
-        else list.animateScrollToItem(lastIndex, Int.MAX_VALUE)
+        else if (follow) list.animateScrollToItem(lastIndex, Int.MAX_VALUE)
     }
-    // When the list gets shorter or taller (the keyboard opening or closing), stay at the end if you were there.
+    // Only your own scrolling changes [follow]: where you leave the list decides it.
+    LaunchedEffect(list) {
+        var dragged = false
+        launch { list.interactionSource.interactions.collect { if (it is DragInteraction.Start) dragged = true } }
+        snapshotFlow { list.isScrollInProgress }.collect { scrolling ->
+            if (!scrolling && dragged) { dragged = false; follow = !list.canScrollForward }
+        }
+    }
+    // When the list gets shorter or taller (the keyboard opening or closing), stay at the end if you're following.
     LaunchedEffect(list) {
         var height = 0
-        var atEnd = true
-        snapshotFlow { list.layoutInfo.viewportSize.height to !list.canScrollForward }.collect { (h, end) ->
-            if (h != height && height != 0 && atEnd && currentLast >= 0) list.scrollToItem(currentLast, Int.MAX_VALUE) else atEnd = end
+        snapshotFlow { list.layoutInfo.viewportSize.height }.collect { h ->
+            if (h != height && height != 0 && follow && currentLast >= 0) list.scrollToItem(currentLast, Int.MAX_VALUE)
             height = h
         }
+    }
+    val showJump by remember { derivedStateOf { !follow && list.canScrollForward } }
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focus = LocalFocusManager.current
+    val send = {
+        keyboard?.hide(); focus.clearFocus()   // the answer gets the screen
+        follow = true
+        viewModel.send()
     }
     val owner = s.session?.ownerUserId == myUserId
 
@@ -151,7 +176,8 @@ fun ChatScreen(viewModel: ChatViewModel, myUserId: String, onBack: () -> Unit,
         // The keyboard's space replaces the bottom inset already in [pad], instead of adding to it.
         Column(Modifier.padding(pad).consumeWindowInsets(pad).fillMaxSize().imePadding()) {
             if (s.loading && s.session == null) { Loading(Modifier.weight(1f)); return@Column }
-            LazyColumn(state = list, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+            Box(Modifier.weight(1f)) {
+            LazyColumn(state = list, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(s.messages, key = { it.id }) { m ->
                     if (m.role == "user") UserBubble(m, mine = m.authorUserId == null || m.authorUserId == myUserId, load = viewModel::attachmentBytes,
@@ -160,8 +186,19 @@ fun ChatScreen(viewModel: ChatViewModel, myUserId: String, onBack: () -> Unit,
                 }
                 if (s.running) item { RunStatusLine(s.runStatus) }
             }
+            // Scrolled up: a way back to the latest, with a dot while the agent is still writing below.
+            androidx.compose.animation.AnimatedVisibility(showJump, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+                enter = androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.fadeOut()) {
+                BadgedBox(badge = { if (s.running) Badge() }) {
+                    FilledTonalIconButton(onClick = { follow = true; scope.launch { list.animateScrollToItem(currentLast.coerceAtLeast(0), Int.MAX_VALUE) } },
+                        modifier = Modifier.testTag("jump-to-latest")) {
+                        Icon(AppIcons.Down, contentDescription = if (s.running) "New text below. Go to the latest" else "Go to the latest")
+                    }
+                }
+            }
+            }
             s.error?.let { ErrorBanner(it, onRetry = { viewModel.load() }, modifier = Modifier.padding(12.dp)) }
-            Composer(s, viewModel::onInput, viewModel::send, viewModel::stop,
+            Composer(s, viewModel::onInput, send, viewModel::stop,
                 onPhoto = pickPhoto?.let { p -> { viewModel.addFile(p) } }, onFile = pickFile?.let { f -> { viewModel.addFile(f) } },
                 onRemove = viewModel::removePending)
         }
