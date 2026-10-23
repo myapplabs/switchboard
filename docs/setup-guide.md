@@ -123,7 +123,7 @@ lets an agent post into its own jobs' conversations.
 Roles in short:
 - **Admins** help manage people.
 - **Members** use what you give them.
-- **Restricted** people (for example children or guests) get only the safest settings and can never
+- **Restricted** people (for example, guests) get only the safest settings and can never
   approve risky actions.
 
 **Notifications** are on: phones are told when an approval, a question or a finished task is waiting

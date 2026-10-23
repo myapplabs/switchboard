@@ -81,7 +81,7 @@ The agent's own account needs Docker to create the sandbox, but its tools run in
 Docker or anything you didn't list. Give your own, unsandboxed profile only to yourself.
 
 Also:
-- Use the **restricted** role for people who should never approve risky actions (for example, children or
+- Use the **restricted** role for people who should never approve risky actions (for example,
   guests). Restricted grants must name a profile.
 - Set **daily limits** and **allowed models** per person, to keep costs in check.
 - Review **Members → Activity** now and then: who used which agent and model, and who approved what.

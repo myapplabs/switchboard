@@ -1,6 +1,7 @@
 package llc.applabs.switchboard.ui.settings
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.mutableStateOf
@@ -52,6 +53,7 @@ import llc.applabs.switchboard.domain.MembersRepository
 import llc.applabs.switchboard.domain.model.Device
 import llc.applabs.switchboard.domain.model.Me
 import llc.applabs.switchboard.ui.common.ErrorBanner
+import llc.applabs.switchboard.ui.common.MarkdownText
 import llc.applabs.switchboard.ui.common.MonoChip
 import llc.applabs.switchboard.ui.common.SectionLabel
 import llc.applabs.switchboard.ui.common.friendly
@@ -110,12 +112,6 @@ private fun Section(title: String, summary: String, tag: String, open: Boolean, 
 private fun Para(text: String) = Text(text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(bottom = 6.dp))
 
 @Composable
-private fun Bullet(text: String) = Row(Modifier.padding(bottom = 4.dp)) {
-    Text("•", modifier = Modifier.padding(end = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-    Text(text, style = MaterialTheme.typography.bodyMedium)
-}
-
-@Composable
 private fun Link(label: String, url: String) {
     val uri = LocalUriHandler.current
     TextButton(onClick = { runCatching { uri.openUri(url) } }, contentPadding = PaddingValues(horizontal = 0.dp)) { Text(label) }
@@ -134,6 +130,13 @@ private fun notifyLabel(kind: String) = when (kind) {
 }
 
 const val GITHUB_URL = "https://github.com/myapplabs/switchboard"
+const val SITE_URL = "https://switchboard.applabs.llc"
+
+/** A legal document from the legal folder (Markdown), without its title (the section already shows it). */
+@Composable
+private fun LegalDocument(markdown: String) = SelectionContainer {
+    MarkdownText(markdown.lines().dropWhile { it.isBlank() || it.startsWith("# ") }.joinToString("\n"))
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -211,27 +214,15 @@ fun SettingsScreen(viewModel: SettingsViewModel, me: Me, hubUrl: String, onMembe
                 }
             }
             item {
-                Section("Terms of use", "The rules for using Switchboard", "terms", "terms" in open, { toggle("terms") }) {
-                    Text("Last updated October 22, 2026", style = MonoLabel, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 6.dp))
-                    Bullet("Switchboard is free, open-source software from AppLabs, LLC, licensed under the Apache License 2.0. It's provided \"as is\", without warranties of any kind, as the license describes.")
-                    Bullet("You run your own hub and connect your own agents. You're responsible for them, for what they do, and for the AI providers and accounts you use with them, including their costs and terms.")
-                    Bullet("Agents can take real actions, such as running commands, changing files or sending messages. Read what you approve, and give people only the access they need.")
-                    Bullet("Use Switchboard lawfully. Don't use it to harm others or to reach systems or data you're not allowed to.")
-                    Bullet("AppLabs runs the notification service for the official app as a convenience. It may change or end it.")
-                    Bullet("These terms can change with new versions of the app; the date above shows the latest.")
-                    Link("Read the license", "$GITHUB_URL/blob/main/LICENSE")
+                Section("Terms of use", "The agreement for using Switchboard", "terms", "terms" in open, { toggle("terms") }) {
+                    LegalDocument(LegalText.TERMS)
+                    Link("Open on the web", "$SITE_URL/terms.html")
                 }
             }
             item {
                 Section("Privacy policy", "Your data stays on your hub", "privacy", "privacy" in open, { toggle("privacy") }) {
-                    Text("Last updated October 22, 2026", style = MonoLabel, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 6.dp))
-                    Bullet("Your data stays on your hub. Conversations, members, permissions, agent keys and settings are stored on the hub you run. AppLabs doesn't receive them.")
-                    Bullet("No tracking. This app has no analytics, advertising or crash-reporting tools.")
-                    Bullet("Notifications: if you allow them, your phone's notification token is registered with AppLabs' notification relay, which delivers through Google's Firebase Cloud Messaging. Your hub sends it only content-free notices, such as \"approval needed\" and ids to open, never message text or names. The relay stores nothing.")
-                    Bullet("Sign-in uses passkeys. The private key stays on your device, in its password manager; your hub keeps only the public key.")
-                    Bullet("Your agents, and the AI providers they use, receive what you send them, under their own privacy policies.")
-                    Bullet("Questions or concerns: open an issue on GitHub, or report security problems privately as described in Security.")
-                    Link("Switchboard on GitHub", GITHUB_URL)
+                    LegalDocument(LegalText.PRIVACY)
+                    Link("Open on the web", "$SITE_URL/privacy.html")
                 }
             }
             s.error?.let { item { ErrorBanner(it, onRetry = { viewModel.load() }, modifier = Modifier.padding(top = 12.dp)) } }

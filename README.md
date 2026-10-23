@@ -252,7 +252,7 @@ Everyone has a **role**:
 | **Owner** (you) | Everything: add agents, decide who uses which agent and model, approve anything, choose the coordinator |
 | **Admin** | Invite and manage members, approve anyone's requests, see everyone's board cards, describe agents |
 | **Member** | Use the agents they're given, approve their own requests, make board cards, share conversations |
-| **Restricted** (for example, children or guests) | Use only the agents they're given, on the safest settings; never approve risky actions; no jobs |
+| **Restricted** (for example, guests) | Use only the agents they're given, on the safest settings; never approve risky actions; no jobs |
 
 On top of roles, **agent access** sets, per agent and per person or role: whether they may chat, which
 tool level the agent uses for them (for example, no terminal or file changes), which models, and a daily

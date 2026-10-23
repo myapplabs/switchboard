@@ -7,6 +7,26 @@ plugins {
     alias(libs.plugins.composeCompiler)
 }
 
+// The Terms of Use and Privacy Policy, from the repository's legal/ folder (the one source; the Website's
+// pages are built from the same files by legal/build_pages.py).
+val generateLegalText = tasks.register("generateLegalText") {
+    val legal = rootProject.layout.projectDirectory.dir("../legal")
+    val terms = legal.file("terms.md")
+    val privacy = legal.file("privacy.md")
+    val out = layout.buildDirectory.dir("generated/legal/kotlin")
+    inputs.files(terms, privacy)
+    outputs.dir(out)
+    doLast {
+        fun raw(f: RegularFile) = f.asFile.readText().replace("\$", "\${'$'}").also {
+            check("\"\"\"" !in it) { "${f.asFile.name}: no triple quotes" }
+        }
+        val file = out.get().file("llc/applabs/switchboard/ui/settings/LegalText.kt").asFile
+        file.parentFile.mkdirs()
+        file.writeText("package llc.applabs.switchboard.ui.settings\n\n// Generated from legal/*.md by :shared:ui:generateLegalText. Don't edit.\n" +
+            "internal object LegalText {\n    const val TERMS = \"\"\"" + raw(terms) + "\"\"\"\n    const val PRIVACY = \"\"\"" + raw(privacy) + "\"\"\"\n}\n")
+    }
+}
+
 kotlin {
     listOf(
         iosArm64(),
@@ -34,6 +54,7 @@ kotlin {
     }
 
     sourceSets {
+        commonMain { kotlin.srcDir(generateLegalText.map { it.outputs.files.singleFile }) }
         commonMain.dependencies {
             // Public API exposes domain types (AppDependencies), so consumers need them too
             api(projects.shared.domain)
