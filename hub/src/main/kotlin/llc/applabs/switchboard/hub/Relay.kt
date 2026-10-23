@@ -72,27 +72,27 @@ class Relay(
     }
 
     fun statusOf(agentId: String): RelayStatus {
-        val row = db.query("SELECT gateway_id, connected_at, last_seen_at FROM relay_link WHERE agent_id = ?", agentId) {
-            Triple(it.getString(1), it.getString(2), it.getString(3)) }.firstOrNull() ?: return RelayStatus("off")
-        val (gw, connected, seen) = row
-        val status = when {
-            (live[agentId] ?: 0) > 0 -> "connected"
-            gw == null || connected == null -> "waiting"
-            else -> "disconnected"
+        val row = db.query("SELECT connected_at, last_seen_at FROM relay_link WHERE agent_id = ?", agentId) {
+            it.getString(1) to it.getString(2) }.firstOrNull()
+        val pending = db.query("SELECT 1 FROM relay_setup_code WHERE agent_id = ? AND expires_at > ?", agentId, now()) { 1 }.isNotEmpty()
+        return when {
+            (live[agentId] ?: 0) > 0 -> RelayStatus("connected", row?.first, row?.second)
+            row?.first != null -> RelayStatus("disconnected", row.first, row.second)
+            row != null || pending -> RelayStatus("waiting", row?.first, row?.second)
+            else -> RelayStatus("off")
         }
-        return RelayStatus(status, connected, seen)
     }
 
-    /** A new one-time setup code for [agentId] (replaces any earlier link: its agent must run setup again). */
+    /** A new one-time setup code for [agentId]. Earlier codes stay valid; the link changes only when one is used. */
     fun createSetup(user: HubUser, agentId: String): RelaySetup {
         if (!user.isOwner) throw HubException.forbidden("Only the owner connects job results.")
         val agent = agent(user, agentId)
         if (!agent.capabilities.jobs) throw HubException(HttpStatusCode.UnprocessableEntity, "not_supported", "No jobs", "${agent.name} doesn't run scheduled jobs.")
         val code = (1..10).map { CODE_ALPHABET[random.nextInt(CODE_ALPHABET.length)] }.joinToString("")
         val expires = Instant.now().plusSeconds(CODE_TTL_S).toString()
-        db.update("DELETE FROM relay_link WHERE agent_id = ?", agent.id)
-        db.update("INSERT INTO relay_link (agent_id, hub_id, setup_code_hash, setup_expires_at, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-            agent.id, agent.hubId, Accounts.hash(code), expires, user.userId, now())
+        db.update("DELETE FROM relay_setup_code WHERE expires_at <= ?", now())
+        db.update("INSERT INTO relay_setup_code (code_hash, agent_id, hub_id, created_by, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            Accounts.hash(code), agent.id, agent.hubId, user.userId, expires, now())
         accounts.activity(user.hubId, user.userId, agent.id, "relay_setup", "{}")
         return RelaySetup(code, expires, "/relay/setup/$code")
     }
@@ -101,6 +101,7 @@ class Relay(
         if (!user.isOwner) throw HubException.forbidden("Only the owner disconnects job results.")
         val agent = agent(user, agentId)
         db.update("DELETE FROM relay_link WHERE agent_id = ?", agent.id)
+        db.update("DELETE FROM relay_setup_code WHERE agent_id = ?", agent.id)
         accounts.activity(user.hubId, user.userId, agent.id, "relay_removed", "{}")
     }
 
@@ -110,13 +111,21 @@ class Relay(
      * the hub (the URL the script was fetched from).
      */
     fun setupScript(code: String, hubUrl: String): String? {
-        val agentId = db.query("SELECT agent_id, setup_expires_at FROM relay_link WHERE setup_code_hash = ?", Accounts.hash(code.trim())) {
-            it.getString(1) to it.getString(2) }.firstOrNull()?.takeIf { Instant.parse(it.second).isAfter(Instant.now()) }?.first ?: return null
+        val hash = Accounts.hash(code.trim().uppercase())
+        data class C(val agentId: String, val hubId: String, val by: String, val expires: String)
+        val c = db.query("SELECT agent_id, hub_id, created_by, expires_at FROM relay_setup_code WHERE code_hash = ?", hash) {
+            C(it.getString(1), it.getString(2), it.getString(3), it.getString(4)) }.firstOrNull()
+        if (c == null) { log.info("relay: unknown or already used setup code"); return null }
+        if (!Instant.parse(c.expires).isAfter(Instant.now())) { log.info("relay: expired setup code for agent {}", c.agentId); return null }
+        // One use: whoever deletes the code first gets the secret.
+        if (db.update("DELETE FROM relay_setup_code WHERE code_hash = ?", hash) == 0) return null
         val gatewayId = "sb-" + newId("gw").removePrefix("gw_").take(12)
         val secret = Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(32).also { random.nextBytes(it) })
-        val n = db.update("UPDATE relay_link SET setup_code_hash = NULL, setup_expires_at = NULL, gateway_id = ?, secret_sealed = ? WHERE agent_id = ? AND setup_code_hash IS NOT NULL",
-            gatewayId, secrets.seal(secret), agentId)
-        if (n == 0) return null
+        db.update("""INSERT INTO relay_link (agent_id, hub_id, gateway_id, secret_sealed, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?)
+                     ON CONFLICT (agent_id) DO UPDATE SET gateway_id = excluded.gateway_id, secret_sealed = excluded.secret_sealed,
+                     created_by = excluded.created_by, created_at = excluded.created_at, connected_at = NULL, last_seen_at = NULL""",
+            c.agentId, c.hubId, gatewayId, secrets.seal(secret), c.by, now())
+        val agentId = c.agentId
         log.info("relay: setup fetched for agent {}", agentId)
         return script(hubUrl, gatewayId, secret)
     }
