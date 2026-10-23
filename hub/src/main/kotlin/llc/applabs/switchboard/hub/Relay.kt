@@ -311,9 +311,14 @@ class Relay(
             |set_var GATEWAY_RELAY_URL '$hubUrl'
             |set_var GATEWAY_RELAY_ID '$gatewayId'
             |set_var GATEWAY_RELAY_SECRET '$secret'
+            |# Without this, Hermes turns off its other chat platforms (Telegram, …) once a relay is set.
+            |set_var GATEWAY_RELAY_ALLOW_DIRECT_PLATFORMS true
             |chmod 600 "${'$'}env"
             |echo "✓ Saved in ${'$'}env"
-            |if command -v hermes >/dev/null 2>&1 && hermes gateway restart >/dev/null 2>&1; then
+            |# Over ssh, ~/.local/bin (where Hermes installs) is often not on PATH.
+            |hermes="${'$'}(command -v hermes || true)"
+            |[ -n "${'$'}hermes" ] || [ ! -x "${'$'}HOME/.local/bin/hermes" ] || hermes="${'$'}HOME/.local/bin/hermes"
+            |if [ -n "${'$'}hermes" ] && "${'$'}hermes" gateway restart >/dev/null 2>&1; then
             |  echo "✓ Hermes gateway restarted"
             |else
             |  echo "→ Restart the Hermes gateway to finish: hermes gateway restart"
