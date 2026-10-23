@@ -145,14 +145,14 @@ class HubClient(engine: HttpClientEngine?, val tokens: TokenStore) {
     suspend fun download(path: String): ByteArray = raw(HttpMethod.Get, path) {}.readRawBytes()
 
     /** A call with a raw body or reply: longer time limit (files), same sign-in, refresh and errors as [send]. */
-    private suspend fun raw(method: HttpMethod, path: String, build: HttpRequestBuilder.() -> Unit): HttpResponse {
+    private suspend fun raw(method: HttpMethod, path: String, request: HttpRequestBuilder.() -> Unit): HttpResponse {
         val url = (tokens.hubUrl?.let(::base) ?: throw HubException("not_signed_in", 0, "Not connected", "Connect to a hub first.")) + path
         suspend fun once(token: String?): HttpResponse = try {
             http.request(url) {
                 this.method = method
                 timeout { requestTimeoutMillis = 180_000 }
                 token?.let { header(HttpHeaders.Authorization, "Bearer $it") }
-                build()
+                request()   // not `build()`: inside this block that would be HttpRequestBuilder.build(), which sets nothing
             }
         } catch (e: CancellationException) { throw e } catch (e: Exception) { throw unreachable(url) }
         val sent = tokens.accessToken

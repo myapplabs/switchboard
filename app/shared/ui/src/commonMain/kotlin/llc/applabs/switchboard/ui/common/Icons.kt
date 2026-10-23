@@ -21,6 +21,11 @@ object AppIcons {
         icon("Send") { stroke { moveTo(12f, 19f); lineTo(12f, 5f); moveTo(6f, 11f); lineTo(12f, 5f); lineTo(18f, 11f) } }
     }
 
+    /** An arrow pointing down: go to the latest. */
+    val Down: ImageVector by lazy {
+        icon("Down") { stroke { moveTo(12f, 5f); lineTo(12f, 19f); moveTo(6f, 13f); lineTo(12f, 19f); lineTo(18f, 13f) } }
+    }
+
     /** A paper clip: attach a file or photo. */
     val Attach: ImageVector by lazy {
         icon("Attach") {

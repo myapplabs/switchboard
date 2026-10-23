@@ -168,7 +168,8 @@ class Runs(
     /** What the agent reads about the files: names, types, sizes and download links (for files it can't see inline). */
     private fun fileNote(files: List<StoredAttachment>, links: Map<String, String>, inlined: Set<String>, hubUrl: String?): String =
         files.joinToString("\n", prefix = "\n\n[Files sent with this message" +
-            (if (hubUrl != null) ". Download links work for ${Attachments.AGENT_LINK_DAYS} days" else "") + ":]\n") { a ->
+            (if (hubUrl != null) ". Download links work for ${Attachments.AGENT_LINK_DAYS} days; fetch them with curl or wget " +
+                "(a browser downloads them instead of showing them)" else "") + ":]\n") { a ->
             val link = hubUrl?.let { base -> links[a.id]?.let { "$base/files/${a.id}/$it/" + java.net.URLEncoder.encode(a.name, Charsets.UTF_8).replace("+", "%20") } }
             "- ${a.name} (${a.contentType}, ${Attachments.sizeLabel(a.size)})" +
                 (if (a.id in inlined) ", shown to you above" else "") + (link?.let { ": $it" } ?: "")
