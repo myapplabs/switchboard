@@ -79,6 +79,7 @@ private fun notifyLabel(kind: String) = when (kind) {
     NotifyKinds.QUESTION -> "Questions from agents"
     NotifyKinds.RUN_FINISHED -> "Long answers finished"
     NotifyKinds.JOB_FAILED -> "Failed scheduled jobs"
+    NotifyKinds.JOB_FINISHED -> "Scheduled job results"
     NotifyKinds.MEMBER_JOINED -> "New members"
     NotifyKinds.TASK_NEEDS_YOU -> "Cards that need me"
     NotifyKinds.TASK_REVIEW -> "Cards ready for review"

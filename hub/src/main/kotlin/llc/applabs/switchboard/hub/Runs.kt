@@ -100,7 +100,13 @@ class Runs(
         if (modelId != null && access.models != null && modelId !in access.models)
             throw HubException.forbidden("Not everyone in this conversation may use that model.")
         val target = agents.targetFor(agent, access.profileId) ?: throw notSupported()
-        val agentInput = if (shared) "[${user.displayName}]: $text" else text
+        val said = if (shared) "[${user.displayName}]: $text" else text
+        // Scheduled-job results posted here since the last answer (Hermes relay): the agent's own session
+        // here never saw them, so they come with the message, as on Telegram.
+        val jobResults = db.query("""SELECT text FROM message WHERE session_id = ? AND kind = 'job_result' AND created_at >
+                COALESCE((SELECT MAX(created_at) FROM run WHERE session_id = ?), '') ORDER BY created_at""", sessionId, sessionId) { it.getString(1) }
+        val agentInput = if (jobResults.isEmpty()) said else
+            jobResults.joinToString("\n\n", prefix = "[Your scheduled job posted this here earlier:]\n", postfix = "\n\n[Reply]:\n$said") { it.take(8_000) }
 
         return starting.computeIfAbsent(sessionId) { Mutex() }.withLock {
             if (conversations.activeRunId(sessionId) != null) throw HubException(HttpStatusCode.Conflict, "run_active",

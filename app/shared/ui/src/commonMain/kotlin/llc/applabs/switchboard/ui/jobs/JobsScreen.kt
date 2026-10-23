@@ -46,6 +46,15 @@ import llc.applabs.switchboard.domain.LiveEvents
 import llc.applabs.switchboard.domain.model.Agent
 import llc.applabs.switchboard.domain.model.Job
 import llc.applabs.switchboard.domain.model.JobInput
+import llc.applabs.switchboard.domain.model.RelaySetup
+import llc.applabs.switchboard.domain.model.RelayStatus
+import androidx.compose.material3.Switch
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import llc.applabs.switchboard.domain.model.UserEvent
 import llc.applabs.switchboard.ui.common.EmptyNote
 import llc.applabs.switchboard.ui.common.ErrorBanner
@@ -62,6 +71,10 @@ data class JobsUiState(
     val filter: JobFilter = JobFilter.All,
     val loading: Boolean = true,
     val error: String? = null,
+    /** Per agent: can its job results reach this hub (owner and admins see this). */
+    val relay: Map<String, RelayStatus> = emptyMap(),
+    /** An open setup: the agent and the command to run on its computer. */
+    val setup: Pair<String, RelaySetup>? = null,
 ) {
     val visible get() = jobs.filter {
         when (filter) { JobFilter.All -> true; JobFilter.Paused -> it.state == "paused"; JobFilter.Failed -> it.lastResult == "failure" }
@@ -69,7 +82,7 @@ data class JobsUiState(
 }
 
 /** Jobs (spec: Jobs): scheduled work on every agent that runs jobs; controls only with job permission. */
-class JobsViewModel(private val agents: AgentsRepository, private val control: ControlRepository, live: LiveEvents) : ViewModel() {
+class JobsViewModel(private val agents: AgentsRepository, private val control: ControlRepository, live: LiveEvents, private val canSeeRelay: Boolean = false) : ViewModel() {
     private val _state = MutableStateFlow(JobsUiState())
     val state: StateFlow<JobsUiState> = _state
 
@@ -86,7 +99,8 @@ class JobsViewModel(private val agents: AgentsRepository, private val control: C
             if (agents.agents.value.isEmpty()) agents.refresh()
             val withJobs = agents.agents.value.filter { it.capabilities.jobs }
             val jobs = withJobs.flatMap { a -> runCatching { control.jobs(a.id) }.getOrDefault(emptyList()) }
-            _state.update { it.copy(agents = withJobs, jobs = jobs.sortedWith(compareBy({ it.state == "paused" }, { it.nextRunAt ?: "~" }))) }
+            val relay = if (!canSeeRelay) emptyMap() else withJobs.mapNotNull { a -> runCatching { a.id to control.relayStatus(a.id) }.getOrNull() }.toMap()
+            _state.update { it.copy(agents = withJobs, relay = relay, jobs = jobs.sortedWith(compareBy({ it.state == "paused" }, { it.nextRunAt ?: "~" }))) }
         } catch (e: Exception) { _state.update { it.copy(error = e.friendly()) } }
         _state.update { it.copy(loading = false) }
     }
@@ -94,6 +108,24 @@ class JobsViewModel(private val agents: AgentsRepository, private val control: C
     fun action(job: Job, action: String) = act { control.jobAction(job.agentId, job.id, action) }
     fun delete(job: Job) = act { control.deleteJob(job.agentId, job.id) }
     fun create(agentId: String, input: JobInput) = act { control.createJob(agentId, input) }
+    fun resultsHere(job: Job, on: Boolean) = act { control.setResultsHere(job.agentId, job.id, on) }
+
+    /** Start (or redo) an agent's setup; watches until the agent connects. */
+    fun connect(agentId: String) = viewModelScope.launch {
+        try {
+            val setup = control.relaySetup(agentId)
+            _state.update { it.copy(setup = agentId to setup) }
+            while (isActive && _state.value.setup?.first == agentId) {
+                val st = runCatching { control.relayStatus(agentId) }.getOrNull()
+                if (st != null) _state.update { it.copy(relay = it.relay + (agentId to st)) }
+                if (st?.status == "connected") break
+                delay(3_000)
+            }
+        } catch (e: Exception) { _state.update { it.copy(error = e.friendly()) } }
+    }
+
+    fun closeSetup() = _state.update { it.copy(setup = null) }
+    fun disconnect(agentId: String) = act { control.removeRelay(agentId) }
 
     private fun act(block: suspend () -> Unit) = viewModelScope.launch {
         try { block(); load() } catch (e: Exception) { _state.update { it.copy(error = e.friendly()) } }
@@ -102,7 +134,7 @@ class JobsViewModel(private val agents: AgentsRepository, private val control: C
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun JobsScreen(viewModel: JobsViewModel) {
+fun JobsScreen(viewModel: JobsViewModel, isOwner: Boolean = false, onOpenChat: (String) -> Unit = {}) {
     val s by viewModel.state.collectAsState()
     var creating by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf<Job?>(null) }
@@ -123,13 +155,22 @@ fun JobsScreen(viewModel: JobsViewModel) {
                         EmptyNote(if (s.agents.isEmpty()) "No agents run jobs" else "No jobs here",
                             if (s.agents.isEmpty()) "Jobs appear for agents that support scheduled work." else "Scheduled work your agents run shows up here.")
                     }
+                    if (isOwner) items(s.agents.filter { (s.relay[it.id]?.status ?: "off") != "connected" }, key = { "relay-${it.id}" }) { a ->
+                        RelayCard(a.name, s.relay[a.id] ?: RelayStatus(), onConnect = { viewModel.connect(a.id) })
+                    }
                     items(s.visible, key = { "${it.agentId}/${it.id}" }) { job ->
                         JobCard(job, agentName = s.agents.firstOrNull { it.id == job.agentId }?.name ?: "", manage = manage(job),
-                            onAction = { viewModel.action(job, it) }, onDelete = { confirmDelete = job })
+                            relayReady = (s.relay[job.agentId]?.status ?: "off") != "off" || job.resultsHere,
+                            onAction = { viewModel.action(job, it) }, onDelete = { confirmDelete = job },
+                            onResultsHere = { viewModel.resultsHere(job, it) }, onOpenResults = { job.resultsSessionId?.let(onOpenChat) })
                     }
                 }
             }
         }
+    }
+    s.setup?.let { (agentId, setup) ->
+        SetupDialog(s.agents.firstOrNull { it.id == agentId }?.name ?: "the agent", setup, s.relay[agentId] ?: RelayStatus("waiting"),
+            onDismiss = { viewModel.closeSetup(); viewModel.load() })
     }
     if (creating) NewJobDialog(s.agents.filter { it.myPermissions.manageJobs }, onCreate = { a, i -> creating = false; viewModel.create(a, i) }, onDismiss = { creating = false })
     confirmDelete?.let { job ->
@@ -140,7 +181,8 @@ fun JobsScreen(viewModel: JobsViewModel) {
 }
 
 @Composable
-private fun JobCard(job: Job, agentName: String, manage: Boolean, onAction: (String) -> Unit, onDelete: () -> Unit) {
+private fun JobCard(job: Job, agentName: String, manage: Boolean, relayReady: Boolean, onAction: (String) -> Unit, onDelete: () -> Unit,
+                    onResultsHere: (Boolean) -> Unit, onOpenResults: () -> Unit) {
     Card(Modifier.fillMaxWidth().testTag("job-${job.name}")) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -173,6 +215,11 @@ private fun JobCard(job: Job, agentName: String, manage: Boolean, onAction: (Str
                     }
                 }
             }
+            if (manage && relayReady) Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Send results here", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                Switch(job.resultsHere, onCheckedChange = onResultsHere, modifier = Modifier.testTag("results-${job.name}"))
+            }
+            if (job.resultsSessionId != null) TextButton(onClick = onOpenResults) { Text("Open results") }
             if (manage) Row {
                 if (job.state == "paused") TextButton(onClick = { onAction("resume") }) { Text("Resume") } else TextButton(onClick = { onAction("pause") }) { Text("Pause") }
                 TextButton(onClick = { onAction("run") }) { Text(if (job.lastResult == "failure") "Retry now" else "Run now") }
@@ -201,4 +248,39 @@ private fun NewJobDialog(agents: List<Agent>, onCreate: (String, JobInput) -> Un
         TextButton(onClick = { agentId?.let { onCreate(it, JobInput(name.trim(), schedule.trim(), prompt)) } },
             enabled = agentId != null && name.isNotBlank() && schedule.isNotBlank() && prompt.isNotBlank()) { Text("Create") }
     }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
+}
+
+/** For the owner: an agent whose job results can't reach the hub yet. */
+@Composable
+private fun RelayCard(agentName: String, status: RelayStatus, onConnect: () -> Unit) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Job results from $agentName", style = MaterialTheme.typography.titleSmall)
+            Text(when (status.status) {
+                "disconnected" -> "$agentName isn't connected right now${status.lastSeenAt?.let { " (last seen ${shortTime(it)})" } ?: ""}. Check that its Hermes gateway is running, or set it up again."
+                "waiting" -> "Set up, but $agentName hasn't connected yet. Run the setup command on its computer."
+                else -> "See what $agentName's jobs produce, in a conversation here, like a chat. Uses Hermes's relay, which is still experimental in Hermes."
+            }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            OutlinedButton(onClick = onConnect) { Text(if (status.status == "off") "Connect" else "Set up again") }
+        }
+    }
+}
+
+@Composable
+private fun SetupDialog(agentName: String, setup: RelaySetup, status: RelayStatus, onDismiss: () -> Unit) {
+    val clipboard = LocalClipboardManager.current
+    val connected = status.status == "connected"
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(if (connected) "$agentName is connected" else "Connect $agentName") }, text = {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (connected) Text("Its job results can now come here. Turn on \"Send results here\" for the jobs you want.")
+            else {
+                Text("On $agentName's computer, in a terminal, as the account Hermes runs as, run:")
+                Text(setup.command, style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    modifier = Modifier.semantics { contentDescription = "Setup command" })
+                TextButton(onClick = { clipboard.setText(AnnotatedString(setup.command)) }) { Text("Copy command") }
+                Text("It works once, for 10 minutes. It saves a key for $agentName only and restarts its Hermes gateway. Waiting for $agentName to connect…",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }, confirmButton = { TextButton(onClick = onDismiss) { Text(if (connected) "Done" else "Close") } })
 }

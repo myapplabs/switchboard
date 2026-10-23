@@ -126,8 +126,9 @@ private fun Main(deps: AppDependencies, me: Me, hubUrl: String, openSession: Str
                 SessionsScreen(vm, deps.agents, me.userId, onOpen = { nav.navigate(Routes.chat(it)) })
             }
             composable(Routes.JOBS) {
-                val vm = viewModel { llc.applabs.switchboard.ui.jobs.JobsViewModel(deps.agents, deps.control, deps.live) }
-                llc.applabs.switchboard.ui.jobs.JobsScreen(vm)
+                val owner = me.role == llc.applabs.switchboard.domain.model.Roles.OWNER
+                val vm = viewModel { llc.applabs.switchboard.ui.jobs.JobsViewModel(deps.agents, deps.control, deps.live, canSeeRelay = owner) }
+                llc.applabs.switchboard.ui.jobs.JobsScreen(vm, isOwner = owner, onOpenChat = { nav.navigate(Routes.chat(it)) })
             }
             composable(Routes.MEMBERS) {
                 val vm = viewModel { MembersViewModel(deps.members, deps.live) }

@@ -53,7 +53,7 @@ class Db private constructor(private val conn: Connection) : AutoCloseable {
         }
 
         /** Migration files in order; add new ones at the end, never edit an applied one. */
-        val MIGRATIONS = listOf("V001__init.sql", "V002__passkeys.sql", "V003__conversations.sql", "V004__household.sql", "V005__control.sql", "V006__push.sql", "V007__hub_names.sql", "V008__tasks.sql", "V009__coordinator.sql", "V010__forge_bridges.sql", "V011__job_runs.sql")
+        val MIGRATIONS = listOf("V001__init.sql", "V002__passkeys.sql", "V003__conversations.sql", "V004__household.sql", "V005__control.sql", "V006__push.sql", "V007__hub_names.sql", "V008__tasks.sql", "V009__coordinator.sql", "V010__forge_bridges.sql", "V011__job_runs.sql", "V012__relay.sql")
 
         internal fun bind(st: PreparedStatement, args: Array<out Any?>) {
             args.forEachIndexed { i, a ->

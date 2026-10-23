@@ -20,6 +20,7 @@ dependencies {
     implementation("io.ktor:ktor-server-status-pages:$ktor")
     implementation("io.ktor:ktor-server-auth:$ktor")
     implementation("io.ktor:ktor-server-sse:$ktor")
+    implementation("io.ktor:ktor-server-websockets:$ktor")
     implementation("io.ktor:ktor-server-call-logging:$ktor")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktor")
     implementation("io.ktor:ktor-client-core:$ktor")

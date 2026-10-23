@@ -6,7 +6,7 @@ Self-hosted Switchboard hubs can't hold the app's push credentials, since anyone
 `https://switchboard-push-relay.vercel.app`; a fork with its own app deploys its own.
 
 - **No content.** A notice is a kind (`approval_needed`, `question_asked`, `run_finished`, `job_failed`,
-  `member_joined`, `task_needs_you`, `task_review`), the hub's id, and opaque ids to open (session, run,
+  `job_finished`, `member_joined`, `task_needs_you`, `task_review`), the hub's id, and opaque ids to open (session, run,
   approval, job, agent, task). Text, names
   and any unknown field are rejected. The app shows a generic notification ("Approval needed") and gets
   the details from its own hub.

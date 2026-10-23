@@ -162,6 +162,7 @@ private fun UserBubble(m: ChatMessage, mine: Boolean) {
 @Composable
 private fun AssistantMessage(m: ChatMessage, onAnswer: (String, String) -> Unit, onDecide: (String, String) -> Unit) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (m.kind == "job_result") Text("SCHEDULED JOB", style = MonoLabel, color = MaterialTheme.colorScheme.primary)
         m.tools.forEach { ToolCard(it) }
         if (m.text.isNotEmpty()) SelectionContainer { MarkdownText(m.text) }
         m.questions.forEach { q -> QuestionCard(q, onAnswer) }

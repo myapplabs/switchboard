@@ -6,6 +6,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.json.JsonElement
 import llc.applabs.switchboard.domain.model.Activity
 import llc.applabs.switchboard.domain.model.Approval
+import llc.applabs.switchboard.domain.model.RelaySetup
+import llc.applabs.switchboard.domain.model.RelayStatus
 import llc.applabs.switchboard.domain.model.Task
 import llc.applabs.switchboard.domain.model.TaskInput
 import llc.applabs.switchboard.domain.model.TaskStepInput
@@ -146,6 +148,11 @@ interface ControlRepository {
     suspend fun createJob(agentId: String, input: JobInput): Job
     suspend fun jobAction(agentId: String, jobId: String, action: String): Job
     suspend fun deleteJob(agentId: String, jobId: String)
+    /** Post this job's results into a conversation here (needs the agent's relay connected). */
+    suspend fun setResultsHere(agentId: String, jobId: String, on: Boolean): Job
+    suspend fun relayStatus(agentId: String): RelayStatus
+    suspend fun relaySetup(agentId: String): RelaySetup
+    suspend fun removeRelay(agentId: String)
     suspend fun quickCommands(): List<QuickCommand>
     suspend fun addQuickCommand(label: String, prompt: String, agentId: String?, everyone: Boolean): QuickCommand
     suspend fun deleteQuickCommand(id: String)

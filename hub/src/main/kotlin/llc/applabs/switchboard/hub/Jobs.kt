@@ -28,10 +28,17 @@ data class JobOut(
     @SerialName("next_run_at") val nextRunAt: String?,
     @SerialName("last_error") val lastError: String? = null,
     @SerialName("recent_runs") val recentRuns: List<JobRunOut> = emptyList(),
+    /** Results are posted into a conversation here (through the agent's relay). */
+    @SerialName("results_here") val resultsHere: Boolean = false,
+    /** That conversation, for the person whose conversation it is. */
+    @SerialName("results_session_id") val resultsSessionId: String? = null,
 )
 
 @Serializable
-data class JobIn(val name: String? = null, val schedule: String? = null, val prompt: String? = null, val repeat: Int? = null)
+data class JobIn(
+    val name: String? = null, val schedule: String? = null, val prompt: String? = null, val repeat: Int? = null,
+    @SerialName("results_here") val resultsHere: Boolean? = null,
+)
 
 /**
  * Scheduled jobs (spec F17, contract `/agents/{id}/jobs…`), kept by the agent itself (Hermes cron).
@@ -47,11 +54,12 @@ class Jobs(
     private val accounts: Accounts, private val events: UserEvents,
 ) {
     var notifier: Notifier? = null
+    lateinit var relay: Relay
     private val log = org.slf4j.LoggerFactory.getLogger(Jobs::class.java)
 
     suspend fun list(user: HubUser, agentId: String): Items<JobOut> {
         val (agent, api, target) = context(user, agentId, manage = false)
-        return Items(api.jobs(target).map { out(agent.id, it) })
+        return Items(api.jobs(target).map { out(agent.id, it, user) })
     }
 
     suspend fun get(user: HubUser, agentId: String, jobId: String): JobOut =
@@ -61,12 +69,26 @@ class Jobs(
         val (agent, api, target) = context(user, agentId, manage = true)
         if (input.name.isNullOrBlank() || input.schedule.isNullOrBlank() || input.prompt.isNullOrBlank())
             throw HubException.invalid("name, schedule and prompt are required")
-        return changed(user, agent, "created", out(agent.id, api.createJob(target, fields(input))))
+        var job = api.createJob(target, fields(input))
+        if (input.resultsHere == true) job = withResults(user, agent, api, target, job, true)
+        return changed(user, agent, "created", out(agent.id, job, user))
     }
 
     suspend fun update(user: HubUser, agentId: String, jobId: String, input: JobIn): JobOut {
         val (agent, api, target) = context(user, agentId, manage = true)
-        return changed(user, agent, "updated", out(agent.id, api.updateJob(target, jobId, fields(input))))
+        val f = fields(input)
+        var job = if (f == JobFields()) api.jobs(target).firstOrNull { it.id == jobId } ?: throw HubException.notFound("job")
+            else api.updateJob(target, jobId, f)
+        input.resultsHere?.let { job = withResults(user, agent, api, target, job, it) }
+        return changed(user, agent, "updated", out(agent.id, job, user))
+    }
+
+    private suspend fun withResults(user: HubUser, agent: AgentRecord, api: AgentJobs, target: ProfileTarget, job: AgentJob, on: Boolean): AgentJob {
+        if (on && relay.statusOf(agent.id).status == "off")
+            throw HubException(HttpStatusCode.Conflict, "relay_not_set_up", "Job results not connected",
+                "Connect job results for ${agent.name} first (Agents → ${agent.name} → Job results).")
+        val deliver = relay.setDelivery(user, agent, api, target, job.id, job.name, job.deliver, on)
+        return job.copy(deliver = deliver)
     }
 
     suspend fun delete(user: HubUser, agentId: String, jobId: String) {
@@ -74,6 +96,7 @@ class Jobs(
         api.deleteJob(target, jobId)
         db.update("DELETE FROM job_run WHERE agent_id = ? AND job_id = ?", agent.id, jobId)
         db.update("DELETE FROM job_watch WHERE agent_id = ? AND job_id = ?", agent.id, jobId)
+        relay.forget(agent.id, jobId)
         accounts.activity(user.hubId, user.userId, agent.id, "job_changed", """{"job_id":"$jobId","change":"deleted"}""")
         events.publish(agents.viewers(agent), "job.updated", mapOf("agent_id" to agent.id, "job_id" to jobId, "state" to "deleted", "last_result" to null))
     }
@@ -81,7 +104,7 @@ class Jobs(
     suspend fun action(user: HubUser, agentId: String, jobId: String, action: String): JobOut {
         if (action !in setOf("pause", "resume", "run")) throw HubException.invalid("action: pause, resume or run")
         val (agent, api, target) = context(user, agentId, manage = true)
-        return changed(user, agent, action, out(agent.id, api.jobAction(target, jobId, action)))
+        return changed(user, agent, action, out(agent.id, api.jobAction(target, jobId, action), user))
     }
 
     private fun changed(user: HubUser, agent: AgentRecord, change: String, job: JobOut): JobOut {
@@ -109,9 +132,13 @@ class Jobs(
         return Triple(agent, api, target)
     }
 
-    private fun out(agentId: String, j: AgentJob) =
-        JobOut(j.id, agentId, j.name, j.prompt, j.schedule, j.state, j.repeat, j.lastRunAt, j.lastResult, j.nextRunAt,
-            lastError = j.lastError.takeIf { j.lastResult == "failure" }, recentRuns = recentRuns(agentId, j.id))
+    private fun out(agentId: String, j: AgentJob, viewer: HubUser): JobOut {
+        val d = relay.delivery(agentId, j.id)
+        val here = d != null && j.deliver?.split(",")?.any { it.trim() == "relay:${d.first}" } == true
+        return JobOut(j.id, agentId, j.name, j.prompt, j.schedule, j.state, j.repeat, j.lastRunAt, j.lastResult, j.nextRunAt,
+            lastError = j.lastError.takeIf { j.lastResult == "failure" }, recentRuns = recentRuns(agentId, j.id),
+            resultsHere = here, resultsSessionId = d?.second?.takeIf { here && d.third == viewer.userId })
+    }
 
     private fun recentRuns(agentId: String, jobId: String): List<JobRunOut> =
         db.query("SELECT ran_at, result, error FROM job_run WHERE agent_id = ? AND job_id = ? ORDER BY ran_at DESC LIMIT $RECENT",

@@ -21,6 +21,8 @@ Please report security problems privately: in this repository, open the **Securi
 - **Privacy between people:** each person's conversations are private by default, and each person's agent
   memory is kept separate.
 - **Notifications:** carry no content, only that something is waiting.
+- **Job results:** an agent connects to the hub's relay with its own key (set up with a one-time command)
+  and can only post into its own jobs' conversations, nothing else.
 - **Downloads:** releases are signed, and the installer checks the signature before installing.
 
 ## What it can't control

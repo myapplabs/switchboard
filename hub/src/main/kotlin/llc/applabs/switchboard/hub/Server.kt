@@ -8,6 +8,11 @@ import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.install
 import io.ktor.server.auth.Authentication
 import io.ktor.server.auth.authenticate
+import io.ktor.server.websocket.WebSockets
+import io.ktor.server.websocket.pingPeriod
+import io.ktor.server.websocket.webSocket
+import io.ktor.websocket.close
+import kotlin.time.Duration.Companion.seconds
 import io.ktor.server.auth.bearer
 import io.ktor.server.auth.principal
 import io.ktor.server.plugins.calllogging.CallLogging
@@ -64,6 +69,7 @@ class Hub(
     val passkeys = Passkeys(db, accounts, pairing, members, config)
     val tasks = Tasks(db, accounts, agents, permissions, conversations, runs, events, scope).also { it.notifier = notifier }
     val forge = ForgeBridges(db, accounts)
+    val relay = Relay(db, secrets, agents, conversations, accounts).also { it.notifier = notifier; jobs.relay = it }
 
     init {
         accounts.ensureHub(config.hubName)
@@ -126,6 +132,7 @@ fun Application.hubModule(hub: Hub) {
     install(ContentNegotiation) { json(hubJson) }
     install(CallLogging)   // logs method, path and status only — never headers (tokens) or bodies
     install(SSE)
+    install(WebSockets) { pingPeriod = 30.seconds; maxFrameSize = 1L shl 20 }
     install(StatusPages) {
         exception<HubException> { call, e -> call.problem(e.status, e.problem()) }
         exception<SerializationException> { call, e ->
@@ -153,6 +160,24 @@ fun Application.hubModule(hub: Hub) {
         // Where the pairing QR code points: a phone camera that opens it gets a hint, the app reads the code.
         get("/pair") {
             call.respondText("Open the app and scan this code from the app's \"Connect to hub\" screen.\n")
+        }
+        // Hermes's relay (scheduled-job results): the setup script for a one-time code, and the gateway's
+        // WebSocket. Both carry their own credentials (the code; the per-agent secret), never a person's.
+        get("/relay/setup/{code}") {
+            val host = call.request.headers["Host"].orEmpty()
+            val local = host.startsWith("127.0.0.1") || host.startsWith("localhost") || host.startsWith("[::1]")
+            val scheme = call.request.headers["X-Forwarded-Proto"]?.takeIf { it == "http" || it == "https" } ?: if (local) "http" else "https"
+            val url = Relay.safeHubUrl(scheme, host) ?: throw HubException.invalid("Host")
+            val script = hub.relay.setupScript(call.parameters["code"]!!, url)
+                ?: return@get call.respondText("echo 'This setup code is unknown, used or expired. Make a new one in the app.' >&2; exit 1\n",
+                    io.ktor.http.ContentType.Text.Plain, HttpStatusCode.NotFound)
+            call.response.headers.append("Cache-Control", "no-store")
+            call.respondText(script, io.ktor.http.ContentType.Text.Plain)
+        }
+        webSocket("/relay") {
+            val agentId = hub.relay.authenticate(call.request.headers["Authorization"])
+            if (agentId == null) { close(io.ktor.websocket.CloseReason(Relay.UNAUTHORIZED, "unauthorized")); return@webSocket }
+            hub.relay.serve(agentId, this)
         }
         route("/v1") {
             get("/hub") {
@@ -216,6 +241,14 @@ fun Application.hubModule(hub: Hub) {
                     val out = hub.permissions.setGrants(u, call.parameters["agent_id"]!!, call.receive<AgentGrants>())
                     hub.accounts.memberIds(u.hubId).let { hub.events.publish(it, "permissions.changed") }
                     call.respond(out)
+                }
+                route("/agents/{agent_id}/relay") {
+                    get { call.respond(hub.relay.status(call.user(), call.parameters["agent_id"]!!)) }
+                    post("/setup") { call.respond(HttpStatusCode.Created, hub.relay.createSetup(call.user(), call.parameters["agent_id"]!!)) }
+                    delete {
+                        hub.relay.remove(call.user(), call.parameters["agent_id"]!!)
+                        call.respond(HttpStatusCode.NoContent)
+                    }
                 }
                 get("/agents/{agent_id}/models") { call.respond(hub.models(call.user(), call.parameters["agent_id"]!!)) }
                 route("/agents/{agent_id}/jobs") {

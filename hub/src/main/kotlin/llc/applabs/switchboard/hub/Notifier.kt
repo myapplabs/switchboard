@@ -55,7 +55,7 @@ class Notifier(private val db: Db, private val relayUrl: String?, private val ht
 
     companion object {
         /** Kinds the app can show (and the relay accepts). */
-        val KINDS = setOf("approval_needed", "question_asked", "run_finished", "job_failed", "member_joined", "task_needs_you", "task_review")
+        val KINDS = setOf("approval_needed", "question_asked", "run_finished", "job_failed", "member_joined", "task_needs_you", "task_review", "job_finished")
 
         fun allowed(prefsJson: String, kind: String): Boolean = runCatching {
             Json.parseToJsonElement(prefsJson).jsonObject[kind]?.jsonPrimitive?.booleanOrNull
