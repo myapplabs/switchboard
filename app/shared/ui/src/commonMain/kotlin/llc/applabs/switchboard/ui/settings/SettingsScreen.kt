@@ -1,6 +1,11 @@
 package llc.applabs.switchboard.ui.settings
 
 import androidx.compose.foundation.clickable
+import llc.applabs.switchboard.domain.ThemeMode
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material3.RadioButton
+import androidx.compose.ui.semantics.Role
 import llc.applabs.switchboard.domain.model.Roles
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.AlertDialog
@@ -135,6 +140,12 @@ private fun Link(label: String, url: String) {
     TextButton(onClick = { runCatching { uri.openUri(url) } }, contentPadding = PaddingValues(horizontal = 0.dp)) { Text(label) }
 }
 
+private fun themeLabel(mode: ThemeMode) = when (mode) {
+    ThemeMode.SYSTEM -> "Match phone"
+    ThemeMode.LIGHT -> "Light"
+    ThemeMode.DARK -> "Dark"
+}
+
 private fun notifyLabel(kind: String) = when (kind) {
     NotifyKinds.APPROVAL -> "Approvals waiting for me"
     NotifyKinds.QUESTION -> "Questions from agents"
@@ -159,7 +170,8 @@ private fun LegalDocument(markdown: String) = SelectionContainer {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel, me: Me, hubUrl: String, onMembers: (() -> Unit)? = null, onSpecialties: (() -> Unit)? = null,
-                   onForge: (() -> Unit)? = null, appVersion: String = "") {
+                   onForge: (() -> Unit)? = null, appVersion: String = "",
+                   themeMode: ThemeMode = ThemeMode.SYSTEM, onThemeMode: (ThemeMode) -> Unit = {}) {
     val s by viewModel.state.collectAsState()
     var open by rememberSaveable { mutableStateOf(setOf<String>()) }
     val toggle = { key: String -> open = if (key in open) open - key else open + key }
@@ -195,6 +207,19 @@ fun SettingsScreen(viewModel: SettingsViewModel, me: Me, hubUrl: String, onMembe
                     TextButton(onClick = { deleting = true }, contentPadding = PaddingValues(horizontal = 0.dp),
                         modifier = Modifier.testTag("delete-account")) {
                         Text(if (me.role == Roles.OWNER) "Delete my account and this hub" else "Delete my account", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
+            item {
+                Section("Appearance", themeLabel(themeMode), "appearance", "appearance" in open, { toggle("appearance") }) {
+                    Column(Modifier.selectableGroup()) {
+                        ThemeMode.entries.forEach { mode ->
+                            Row(Modifier.fillMaxWidth().selectable(themeMode == mode, role = Role.RadioButton, onClick = { onThemeMode(mode) })
+                                .padding(vertical = 8.dp).testTag("theme-${mode.name.lowercase()}"), verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(themeMode == mode, onClick = null)
+                                Text(themeLabel(mode), modifier = Modifier.padding(start = 12.dp))
+                            }
+                        }
                     }
                 }
             }

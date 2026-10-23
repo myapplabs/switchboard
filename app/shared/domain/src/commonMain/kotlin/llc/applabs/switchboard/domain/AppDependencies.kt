@@ -1,5 +1,7 @@
 package llc.applabs.switchboard.domain
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import llc.applabs.switchboard.domain.model.PickedFile
 
 /**
@@ -31,6 +33,12 @@ interface AppDependencies {
     val pickFile: (suspend () -> PickedFile?)? get() = null
     /** Opens a downloaded file in another app (a viewer); null where that isn't available. */
     val openFile: ((name: String, contentType: String, bytes: ByteArray) -> Unit)? get() = null
+    /** Light, dark, or the phone's setting: the person's choice, kept on this device. */
+    val themeMode: StateFlow<ThemeMode> get() = MutableStateFlow(ThemeMode.SYSTEM)
+    fun setThemeMode(mode: ThemeMode) {}
     /** This app's version, as people see it (e.g. "0.3.4"); empty where unknown. */
     val appVersion: String get() = ""
 }
+
+/** The app's look: the phone's setting, or always light or dark. */
+enum class ThemeMode { SYSTEM, LIGHT, DARK }

@@ -89,7 +89,12 @@ object Routes {
 @Composable
 fun App(deps: AppDependencies, inviteLink: String? = null, openSession: String? = null, onSessionOpened: () -> Unit = {},
         openTask: String? = null, onTaskOpened: () -> Unit = {}, pairLink: String? = null) {
-    AppLabsTheme {
+    val themeMode by deps.themeMode.collectAsState()
+    AppLabsTheme(useDarkTheme = when (themeMode) {
+        llc.applabs.switchboard.domain.ThemeMode.LIGHT -> false
+        llc.applabs.switchboard.domain.ThemeMode.DARK -> true
+        llc.applabs.switchboard.domain.ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
+    }) {
         val auth by deps.auth.state.collectAsState()
         LaunchedEffect(Unit) { deps.auth.restore() }
         when (val a = auth) {
@@ -109,6 +114,7 @@ fun App(deps: AppDependencies, inviteLink: String? = null, openSession: String? 
 private fun Main(deps: AppDependencies, me: Me, hubUrl: String, openSession: String?, onSessionOpened: () -> Unit,
                  openTask: String?, onTaskOpened: () -> Unit) {
     val nav = rememberNavController()
+    val themeMode by deps.themeMode.collectAsState()
     // A tapped notification: open its conversation, or its card.
     LaunchedEffect(openSession) { openSession?.let { nav.navigate(Routes.chat(it)); onSessionOpened() } }
     LaunchedEffect(openTask) { openTask?.let { nav.navigate(Routes.task(it)); onTaskOpened() } }
@@ -151,7 +157,7 @@ private fun Main(deps: AppDependencies, me: Me, hubUrl: String, openSession: Str
                 SettingsScreen(vm, me, hubUrl, onMembers = { nav.navigate(Routes.MEMBERS) }.takeIf { me.permissions.manageMembers },
                     onSpecialties = { nav.navigate(Routes.SPECIALTIES) }.takeIf { me.permissions.manageMembers },
                     onForge = { nav.navigate(Routes.FORGE_LINKS) }.takeIf { me.role != llc.applabs.switchboard.domain.model.Roles.RESTRICTED },
-                    appVersion = deps.appVersion)
+                    appVersion = deps.appVersion, themeMode = themeMode, onThemeMode = deps::setThemeMode)
             }
             composable(Routes.BOARD) {
                 val vm = viewModel { llc.applabs.switchboard.ui.board.BoardViewModel(deps.tasks, deps.agents,

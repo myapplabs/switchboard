@@ -4,7 +4,6 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -12,8 +11,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 // Switchboard's theme (spec: Screens and UX): a dark "control room" — near-black ground, one amber
-// accent, status colors that differ in lightness too (readable without color). A light theme follows
-// the system setting. Mono (JetBrains Mono in the spec; the platform monospace until fonts are bundled)
+// accent, status colors that differ in lightness too (readable without color). A light theme too (the
+// person's choice in More, or the system setting). Mono (JetBrains Mono in the spec; the platform monospace until fonts are bundled)
 // is for status and technical labels.
 
 private val Ink = Color(0xFF0B0D10)
@@ -85,8 +84,8 @@ val MonoBody = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp, li
 
 /** Agent status colors: green / amber / grey / red, each also a different lightness. */
 object StatusColors {
-    @Composable @ReadOnlyComposable fun online() = if (isSystemInDarkTheme()) Color(0xFF3DD68C) else Color(0xFF167A48)
-    @Composable @ReadOnlyComposable fun busy() = if (isSystemInDarkTheme()) Amber else Color(0xFF9A5B00)
-    @Composable @ReadOnlyComposable fun offline() = if (isSystemInDarkTheme()) Color(0xFF5C6370) else Color(0xFF9AA0A8)
-    @Composable @ReadOnlyComposable fun problem() = if (isSystemInDarkTheme()) Color(0xFFFF6B6B) else Color(0xFFBA1A1A)
+    @Composable @ReadOnlyComposable fun online() = if (llc.applabs.design.LocalDarkTheme.current) Color(0xFF3DD68C) else Color(0xFF167A48)
+    @Composable @ReadOnlyComposable fun busy() = if (llc.applabs.design.LocalDarkTheme.current) Amber else Color(0xFF9A5B00)
+    @Composable @ReadOnlyComposable fun offline() = if (llc.applabs.design.LocalDarkTheme.current) Color(0xFF5C6370) else Color(0xFF9AA0A8)
+    @Composable @ReadOnlyComposable fun problem() = if (llc.applabs.design.LocalDarkTheme.current) Color(0xFFFF6B6B) else Color(0xFFBA1A1A)
 }
