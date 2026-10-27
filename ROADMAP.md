@@ -21,7 +21,13 @@ Where Switchboard is going. Plans change; issues and discussions are welcome.
 - **Easier hosting:** an option to reach a hub without Tailscale, and Windows.
 - **Security:** a dedicated hub account on macOS (as on Linux), and an independent security review before 1.0.
 - **More agents:** OpenClaw and OpenAI-compatible agents through new adapters.
-- **More from the phone:** the share sheet, voice, widgets, several hubs in one app.
+- **More from the phone:** the share sheet, voice dictation, a photo from the camera, widgets, several
+  hubs in one app.
+- **Quieter and safer phone:** quiet hours for notifications, and an optional fingerprint or face lock
+  for the app.
+- **Approvals:** edit a command before allowing it, where the agent supports it.
+- **Agent settings:** see each agent's skills, MCP servers, memory and persona from the phone (read-only
+  first; changes only by the owner, through the hub).
 
 ## Later
 
