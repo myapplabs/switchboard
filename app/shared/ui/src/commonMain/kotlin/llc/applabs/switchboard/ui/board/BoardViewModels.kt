@@ -20,10 +20,6 @@ import llc.applabs.switchboard.ui.common.friendly
 
 data class BoardUiState(
     val tasks: List<Task> = emptyList(),
-    /** FORGE tickets, when this person's FORGE is connected. */
-    val forge: llc.applabs.switchboard.domain.model.ForgeBoard = llc.applabs.switchboard.domain.model.ForgeBoard(false),
-    /** Shown above the board when a FORGE connection exists but isn't answering. */
-    val forgeNote: String? = null,
     val agents: List<Agent> = emptyList(),
     /** The column shown; null = all, grouped. */
     val column: String? = null,
@@ -32,37 +28,16 @@ data class BoardUiState(
 ) {
     /** Sub-cards show inside their coordinated card, not on the board. */
     private val top: List<Task> get() = tasks.filter { it.parentId == null }
-    fun count(c: String) = top.count { it.column == c } + forge.cards.count { it.column == c }
-    val openCount: Int get() = top.count { it.column != Columns.DONE } + forge.cards.count { it.column != Columns.DONE }
-    val shownForge: List<llc.applabs.switchboard.domain.model.ForgeCard>
-        get() = if (column == null) forge.cards.filter { it.column != Columns.DONE } else forge.cards.filter { it.column == column }
+    fun count(c: String) = top.count { it.column == c }
+    val openCount: Int get() = top.count { it.column != Columns.DONE }
     val shown: List<Task> get() = if (column == null) top.filter { it.column != Columns.DONE } else top.filter { it.column == column }
 }
 
-class BoardViewModel(private val tasks: TasksRepository, private val agents: AgentsRepository,
-                     private val forge: llc.applabs.switchboard.domain.ForgeRepository? = null) : ViewModel() {
+class BoardViewModel(private val tasks: TasksRepository, private val agents: AgentsRepository) : ViewModel() {
     private val _state = MutableStateFlow(BoardUiState())
     val state: StateFlow<BoardUiState> = _state
 
     init {
-        forge?.let { f ->
-            viewModelScope.launch { f.board.collect { b -> _state.update { it.copy(forge = b) } } }
-            // FORGE is read again every 30 s while the board is open (the hub caches it briefly).
-            viewModelScope.launch {
-                var hasLinks: Boolean? = null
-                while (true) {
-                    runCatching { f.refresh() }
-                    if (hasLinks == null) hasLinks = runCatching { f.bridges().isNotEmpty() }.getOrDefault(false)
-                    val b = f.board.value
-                    _state.update { it.copy(forgeNote = when {
-                        b.connected && b.problem != null -> "FORGE: ${b.problem}"
-                        !b.connected && hasLinks == true -> "FORGE isn't connected. Run forge switchboard connect where FORGE runs."
-                        else -> null
-                    }) }
-                    kotlinx.coroutines.delay(30_000)
-                }
-            }
-        }
         viewModelScope.launch {
             combine(tasks.tasks, agents.agents) { t, a -> t to a }.collect { (t, a) -> _state.update { it.copy(tasks = t, agents = a) } }
         }

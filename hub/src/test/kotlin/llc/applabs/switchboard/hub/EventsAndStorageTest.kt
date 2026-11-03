@@ -51,7 +51,9 @@ class EventsAndStorageTest {
         val file = Files.createTempDirectory("hub").resolve("hub.db")
         Db.open(file).use { Accounts(it).ensureHub("Home") }
         Db.open(file).use { db ->
-            assertEquals(listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14), db.query("SELECT version FROM schema_version ORDER BY version") { it.getInt(1) })
+            assertEquals(listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15), db.query("SELECT version FROM schema_version ORDER BY version") { it.getInt(1) })
+            // v15 dropped FORGE's bridges table (Switchboard doesn't include FORGE).
+            assertEquals(emptyList(), db.query("SELECT name FROM sqlite_master WHERE name LIKE 'forge%'") { it.getString(1) })
             assertEquals("Home", Accounts(db).hub()!!.second)
         }
     }

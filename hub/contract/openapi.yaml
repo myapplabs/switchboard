@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Switchboard Hub API
-  version: 0.4.0
+  version: 0.5.0
   summary: The API between the Switchboard app and a Switchboard hub.
   description: |
     The app talks only to the hub; the hub talks to agents (Hermes Agent first) through adapters.
@@ -47,7 +47,6 @@ tags:
   - { name: jobs, description: "Scheduled agent jobs (agents whose adapter supports jobs)" }
   - { name: activity, description: "Append-only activity log (owner/admin)" }
   - { name: quick-commands, description: "Prompt templates" }
-  - { name: forge, description: "FORGE tickets on the board, through a bridge where FORGE runs (v1.1, M5)" }
   - { name: tasks, description: "The task board: cards with steps on agents, a person's Review before Done (v1.1, M5)" }
 
 paths:
@@ -231,7 +230,7 @@ paths:
       summary: Delete my account (app stores require deletion from inside the app)
       description: >-
         A member's account: their conversations (on the agents too), grants, quick commands, passkeys, devices,
-        notification tokens, shares, job-result deliveries and FORGE bridges are deleted, the account is disabled
+        notification tokens, shares and job-result deliveries are deleted, the account is disabled
         and its name becomes "Deleted member"; activity action `account_deleted`. The owner's account can't exist
         without the hub, so the owner deletes everything on the hub, confirming with the hub's name (case and
         surrounding spaces ignored); the hub then waits for a new owner (`switchboard-hub setup-code`).
@@ -1353,183 +1352,12 @@ paths:
               schema: { $ref: "#/components/schemas/Task" }
         "409": { $ref: "#/components/responses/Problem" }
 
-  /forge/bridges:
-    get:
-      tags: [forge]
-      operationId: listForgeBridges
-      summary: My FORGE connections
-      x-release: v1.1
-      responses:
-        "200":
-          description: Connections (never their tokens)
-          content:
-            application/json:
-              schema: { type: object, required: [items], properties: { items: { type: array, items: { $ref: "#/components/schemas/ForgeBridge" } } } }
-    post:
-      tags: [forge]
-      operationId: createForgeBridge
-      summary: A new FORGE connection and its one-time code (10 minutes) for `forge switchboard connect --code`; not for restricted members
-      x-release: v1.1
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { type: object, required: [name], properties: { name: { type: string, minLength: 1, maxLength: 40 } } }
-      responses:
-        "201":
-          description: Created
-          content:
-            application/json:
-              schema: { type: object, required: [bridge, code, code_expires_at], properties: { bridge: { $ref: "#/components/schemas/ForgeBridge" }, code: { type: string, example: XFNA-JYAG, description: 'One use; FORGE trades it for its own token (the app never sees the token)' }, code_expires_at: { type: string, format: date-time } } }
-
-  /forge/bridges/{bridge_id}:
-    delete:
-      tags: [forge]
-      operationId: revokeForgeBridge
-      x-release: v1.1
-      parameters: [{ name: bridge_id, in: path, required: true, schema: { type: string } }]
-      responses:
-        "204": { description: 'Revoked; the bridge stops' }
-
-  /forge/cards:
-    get:
-      tags: [forge]
-      operationId: forgeCards
-      summary: My FORGE tickets as board cards, read from FORGE through my bridge (cached ~15 s)
-      x-release: v1.1
-      parameters:
-        - { name: fresh, in: query, required: false, schema: { type: boolean } }
-      responses:
-        "200":
-          description: The cards, or connected false
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/ForgeBoard" }
-
-  /forge/tickets/start:
-    post:
-      tags: [forge]
-      operationId: startForgeTicket
-      summary: Preview (readiness, estimate) a ticket's run; with confirmed true, start it (spends credits)
-      x-release: v1.1
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [project, ticket]
-              properties:
-                project: { type: string }
-                ticket: { type: string, pattern: '^T-[0-9]{3,}$' }
-                confirmed: { type: boolean, default: false }
-      responses:
-        "200": { description: "FORGE's answer (forge_start_ticket): a preview {started false, spec_verdict, spec_score, estimate_usd {low, typical, high, basis} or null} or {started true, run_id…}", content: { application/json: { schema: { type: object } } } }
-        "503": { $ref: "#/components/responses/Problem" }
-
-  /forge/runs/{run_id}:
-    get:
-      tags: [forge]
-      operationId: forgeRun
-      summary: "A FORGE run: phase, gate, the review's recommendation, questions (forge_run)"
-      x-release: v1.1
-      parameters: [{ name: run_id, in: path, required: true, schema: { type: string } }]
-      responses:
-        "200": { description: "FORGE's answer", content: { application/json: { schema: { type: object } } } }
-
-  /forge/runs/{run_id}/decide:
-    post:
-      tags: [forge]
-      operationId: decideForgeRun
-      summary: Approve or reject the gate a FORGE run waits at, recorded in FORGE as mine, from this app
-      x-release: v1.1
-      parameters: [{ name: run_id, in: path, required: true, schema: { type: string } }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [decision]
-              properties:
-                decision: { type: string, enum: [approve, reject] }
-                note: { type: string, description: 'Required to reject: what should change' }
-      responses:
-        "200": { description: "FORGE's answer (forge_decide)", content: { application/json: { schema: { type: object } } } }
-
-  /forge/bridge/pair:
-    post:
-      tags: [forge]
-      operationId: forgeBridgePair
-      summary: FORGE trades the one-time code for its bridge token (no auth; once; within 10 minutes)
-      x-release: v1.1
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { type: object, required: [code], properties: { code: { type: string } } }
-      responses:
-        "200":
-          description: The bridge's token (FORGE keeps it in its keychain)
-          content:
-            application/json:
-              schema: { type: object, required: [token, bridge_id, name], properties: { token: { type: string }, bridge_id: { type: string }, name: { type: string } } }
-        "401": { $ref: "#/components/responses/Problem" }
-
-  /forge/bridge/poll:
-    post:
-      tags: [forge]
-      operationId: forgeBridgePoll
-      summary: "The bridge asks for work (bridge token, not a person's); held up to 25 s"
-      x-release: v1.1
-      security: [{ forgeBridge: [] }]
-      responses:
-        "200":
-          description: Tool calls to run, maybe none
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [calls]
-                properties:
-                  calls:
-                    type: array
-                    items: { type: object, required: [id, tool, arguments], properties: { id: { type: string }, tool: { type: string }, arguments: { type: object } } }
-        "401": { $ref: "#/components/responses/Problem" }
-
-  /forge/bridge/results:
-    post:
-      tags: [forge]
-      operationId: forgeBridgeResults
-      summary: The bridge's answers
-      x-release: v1.1
-      security: [{ forgeBridge: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [results]
-              properties:
-                results:
-                  type: array
-                  items: { type: object, required: [id, ok], properties: { id: { type: string }, ok: { type: boolean }, result: {}, error: { type: string } } }
-      responses:
-        "204": { description: 'Received' }
-
 components:
   securitySchemes:
     bearer:
       type: http
       scheme: bearer
       description: Short-lived access token (15 min) from the passkey flow; renew with /auth/refresh.
-    forgeBridge:
-      type: http
-      scheme: bearer
-      description: A FORGE bridge's own token (fbt_…), from createForgeBridge; only for /forge/bridge/*.
-
   parameters:
     AgentId: { name: agent_id, in: path, required: true, schema: { type: string } }
     SessionId: { name: session_id, in: path, required: true, schema: { type: string } }
@@ -2136,8 +1964,7 @@ components:
           description: Open enum
           enum: [run_started, approval_decided, member_joined, member_removed, account_deleted, role_changed, grants_changed,
                  agent_added, agent_changed, agent_removed, job_changed, invite_created, device_revoked,
-                 agent_described, task_created, task_reviewed, task_deleted,
-                 forge_bridge_created, forge_bridge_revoked, forge_ticket_started, forge_decided]
+                 agent_described, task_created, task_reviewed, task_deleted]
         detail: { type: object, description: 'Metadata only — never message content' }
 
     QuickCommand:
@@ -2203,7 +2030,7 @@ components:
           description: 'Why it needs someone (open enum): approval, question, failed, stopped, unavailable, limit_runs, limit_time, plan (approve the coordinator''s plan), plan_invalid'
         reason_detail: { type: [string, "null"] }
         outcome: { type: [string, "null"], enum: [accepted, not_used, null] }
-        source: { type: string, description: 'switchboard, or forge for FORGE tickets (later in M5)' }
+        source: { type: string, description: 'switchboard' }
         source_ref: { type: [string, "null"] }
         created_by: { type: string }
         created_by_name: { type: string }
@@ -2259,38 +2086,3 @@ components:
         steps: { type: array, minItems: 1, maxItems: 6, items: { $ref: "#/components/schemas/TaskStepInput" } }
         due: { type: [string, "null"] }
         review_each_step: { type: boolean }
-
-    ForgeBridge:
-      type: object
-      required: [id, name, connected, created_at]
-      properties:
-        id: { type: string }
-        name: { type: string }
-        connected: { type: boolean, description: 'Polled within the last ~45 s' }
-        paired: { type: boolean, description: 'FORGE has used the one-time code' }
-        last_seen_at: { type: [string, "null"], format: date-time }
-        created_at: { type: string, format: date-time }
-
-    ForgeCard:
-      type: object
-      required: [id, project, key, title, status, column]
-      properties:
-        id: { type: string, example: "forge:Gameplay:T-005" }
-        project: { type: string }
-        key: { type: string, example: T-005 }
-        title: { type: string }
-        status: { type: string, description: "FORGE's ticket status: draft, todo, in_progress, in_review, done" }
-        column: { $ref: "#/components/schemas/TaskColumn" }
-        milestone: { type: [string, "null"] }
-        grade: { type: [string, "null"], description: 'SpecGrader verdict' }
-        run_id: { type: [string, "null"] }
-        waiting_for: { type: [string, "null"], description: 'The gate its run waits at (column needs_you)' }
-        phase: { type: [string, "null"] }
-
-    ForgeBoard:
-      type: object
-      required: [connected]
-      properties:
-        connected: { type: boolean }
-        cards: { type: array, items: { $ref: "#/components/schemas/ForgeCard" } }
-        problem: { type: [string, "null"] }

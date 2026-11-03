@@ -74,9 +74,6 @@ object Routes {
     const val TASK = "task/{taskId}"
     const val NEW_TASK = "new-task"
     const val SPECIALTIES = "specialties"
-    const val FORGE_TICKET = "forge-ticket/{cardId}"
-    const val FORGE_LINKS = "forge"
-    fun forgeTicket(id: String) = "forge-ticket/$id"
     fun chat(id: String) = "chat/$id"
     fun task(id: String) = "task/$id"
 }
@@ -156,23 +153,11 @@ private fun Main(deps: AppDependencies, me: Me, hubUrl: String, openSession: Str
                 val vm = viewModel { SettingsViewModel(deps.auth, deps.members, deps.push) }
                 SettingsScreen(vm, me, hubUrl, onMembers = { nav.navigate(Routes.MEMBERS) }.takeIf { me.permissions.manageMembers },
                     onSpecialties = { nav.navigate(Routes.SPECIALTIES) }.takeIf { me.permissions.manageMembers },
-                    onForge = { nav.navigate(Routes.FORGE_LINKS) }.takeIf { me.role != llc.applabs.switchboard.domain.model.Roles.RESTRICTED },
                     appVersion = deps.appVersion, themeMode = themeMode, onThemeMode = deps::setThemeMode)
             }
             composable(Routes.BOARD) {
-                val vm = viewModel { llc.applabs.switchboard.ui.board.BoardViewModel(deps.tasks, deps.agents,
-                    deps.forge.takeIf { me.role != llc.applabs.switchboard.domain.model.Roles.RESTRICTED }) }
-                llc.applabs.switchboard.ui.board.BoardScreen(vm, me.userId, onOpen = { nav.navigate(Routes.task(it)) }, onNew = { nav.navigate(Routes.NEW_TASK) },
-                    onOpenForge = { nav.navigate(Routes.forgeTicket(it)) })
-            }
-            composable(Routes.FORGE_TICKET) { entry ->
-                val id = entry.savedStateHandle.get<String>("cardId") ?: return@composable
-                val vm = viewModel(key = "forge-$id") { llc.applabs.switchboard.ui.board.ForgeTicketViewModel(id, deps.forge) }
-                llc.applabs.switchboard.ui.board.ForgeTicketScreen(vm, onBack = { nav.back() })
-            }
-            composable(Routes.FORGE_LINKS) {
-                val vm = viewModel { llc.applabs.switchboard.ui.board.ForgeLinksViewModel(deps.forge) }
-                llc.applabs.switchboard.ui.board.ForgeLinksScreen(vm, hubUrl, onBack = { nav.back() })
+                val vm = viewModel { llc.applabs.switchboard.ui.board.BoardViewModel(deps.tasks, deps.agents) }
+                llc.applabs.switchboard.ui.board.BoardScreen(vm, me.userId, onOpen = { nav.navigate(Routes.task(it)) }, onNew = { nav.navigate(Routes.NEW_TASK) })
             }
             composable(Routes.TASK) { entry ->
                 val id = entry.savedStateHandle.get<String>("taskId") ?: return@composable

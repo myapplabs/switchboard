@@ -20,8 +20,7 @@ type is an adapter, and [Hermes Agent](https://github.com/NousResearch/hermes-ag
   participant may use, so sharing never gives anyone more access.
 - **The board:** cards with steps on different agents, each step a normal conversation run with the
   creator's permissions, a person's review before done, limits on every card, and an optional
-  coordinator agent that plans sub-cards. [FORGE](https://applabs.llc) users can show their tickets on
-  the board through `forge switchboard connect`.
+  coordinator agent that plans sub-cards.
 - **Jobs, quick commands, Ask all,** and push notices without content (through the push relay).
 
 The API is specified in [`../api`](../api); `contract/` holds the copies the tests validate against.

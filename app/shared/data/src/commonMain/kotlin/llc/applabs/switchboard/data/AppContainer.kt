@@ -48,7 +48,6 @@ class AppContainer(
     override val control = ControlRepositoryImpl(client)
     override val push = PushRepositoryImpl(client, pushTokens)
     override val tasks = TasksRepositoryImpl(client, liveImpl, scope)
-    override val forge = ForgeRepositoryImpl(client)
 
     init {
         // Register for push whenever someone signs in (best effort).

@@ -99,7 +99,7 @@ private fun stepLabel(s: TaskStep, agents: List<Agent>): String = when (s.kind) 
 /** The board (spec F23): column chips with counts, one column at a time on phones; "Open" shows every unfinished card. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BoardScreen(viewModel: BoardViewModel, myUserId: String, onOpen: (String) -> Unit, onNew: () -> Unit, onOpenForge: (String) -> Unit = {}) {
+fun BoardScreen(viewModel: BoardViewModel, myUserId: String, onOpen: (String) -> Unit, onNew: () -> Unit) {
     val s by viewModel.state.collectAsState()
     Scaffold(topBar = {
         TopAppBar(title = { Text("Board") }, actions = { TextButton(onClick = onNew, modifier = Modifier.testTag("new-card")) { Text("New card") } })
@@ -112,18 +112,15 @@ fun BoardScreen(viewModel: BoardViewModel, myUserId: String, onOpen: (String) ->
                         leadingIcon = { StatusDot(columnColor(c)) }, modifier = Modifier.testTag("column-$c"))
                 }
             }
-            s.forgeNote?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) }
             when {
                 s.loading -> Loading()
                 s.error != null && s.tasks.isEmpty() -> ErrorBanner(s.error!!, onRetry = { viewModel.refresh() }, modifier = Modifier.padding(16.dp))
-                s.shown.isEmpty() && s.shownForge.isEmpty() -> EmptyNote(
+                s.shown.isEmpty() -> EmptyNote(
                     if (s.tasks.isEmpty()) "No cards yet" else "Nothing in ${s.column?.let(Columns::label) ?: "progress"}",
                     if (s.tasks.isEmpty()) "Make a card, give it to one agent or several in turn, and review the result when they're done." else "",
                     Modifier.padding(16.dp))
                 else -> LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(s.shown, key = { it.id }) { t -> TaskCard(t, s.agents, showColumn = s.column == null, mine = t.createdBy == myUserId) { onOpen(t.id) } }
-                    items(s.shownForge, key = { it.id }) { c -> ForgeCardRow(c, showColumn = s.column == null) { onOpenForge(c.id) } }
                 }
             }
         }
