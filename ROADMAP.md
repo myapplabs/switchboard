@@ -11,7 +11,7 @@ Where Switchboard is going. Plans change; issues and discussions are welcome.
 - **Control:** approvals routed to the right person, the model picker, jobs, quick commands.
 - **Notifications:** content-free push through a relay; Ask all; accessibility.
 - **The board:** cards with steps on different agents, review before done, limits on every card, a
-  coordinator agent that plans sub-cards, and FORGE tickets as cards.
+  coordinator agent that plans sub-cards.
 - **Easy setup:** a one-step installer (Linux and Mac) with signed downloads, Tailscale and Hermes set
   up for you, a QR code to pair the phone, and a Docker image.
 

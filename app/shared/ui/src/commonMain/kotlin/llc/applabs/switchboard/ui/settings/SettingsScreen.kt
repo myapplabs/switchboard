@@ -170,7 +170,7 @@ private fun LegalDocument(markdown: String) = SelectionContainer {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel, me: Me, hubUrl: String, onMembers: (() -> Unit)? = null, onSpecialties: (() -> Unit)? = null,
-                   onForge: (() -> Unit)? = null, appVersion: String = "",
+                   appVersion: String = "",
                    themeMode: ThemeMode = ThemeMode.SYSTEM, onThemeMode: (ThemeMode) -> Unit = {}) {
     val s by viewModel.state.collectAsState()
     var open by rememberSaveable { mutableStateOf(setOf<String>()) }
@@ -181,10 +181,9 @@ fun SettingsScreen(viewModel: SettingsViewModel, me: Me, hubUrl: String, onMembe
     val thisDevice = s.devices.firstOrNull { it.thisDevice }
     Scaffold(topBar = { TopAppBar(title = { Text("More") }) }) { pad ->
         LazyColumn(Modifier.padding(pad).fillMaxSize().padding(horizontal = 16.dp)) {
-            if (onMembers != null || onSpecialties != null || onForge != null) item {
-                Section("Manage", listOfNotNull("FORGE".takeIf { onForge != null }, "Members".takeIf { onMembers != null },
+            if (onMembers != null || onSpecialties != null) item {
+                Section("Manage", listOfNotNull("Members".takeIf { onMembers != null },
                     "What agents are good at".takeIf { onSpecialties != null }).joinToString(" · "), "manage", "manage" in open, { toggle("manage") }) {
-                    onForge?.let { MoreRow("FORGE", "Your FORGE tickets on the board; decide FORGE's gates here", "more-forge", it) }
                     onMembers?.let { MoreRow("Members", "Invite people, roles, agent access, activity", "more-members", it) }
                     onSpecialties?.let { MoreRow("What agents are good at", "Descriptions and tags used when picking agents for cards", "more-specialties", it) }
                 }

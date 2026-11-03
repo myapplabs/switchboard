@@ -74,7 +74,6 @@ class Hub(
     val pairing = Pairing(db, accounts)
     val passkeys = Passkeys(db, accounts, pairing, members, config)
     val tasks = Tasks(db, accounts, agents, permissions, conversations, runs, events, scope).also { it.notifier = notifier }
-    val forge = ForgeBridges(db, accounts)
     val relay = Relay(db, secrets, agents, conversations, accounts).also { it.notifier = notifier; jobs.relay = it }
     val attachments = Attachments(db, filesDir).also { conversations.attachments = it; runs.attachments = it }
 
@@ -243,13 +242,6 @@ fun Application.hubModule(hub: Hub) {
                 post("/refresh") { call.respond(hub.accounts.refresh(call.receive<RefreshIn>().refreshToken)) }
             }
             get("/invites/{invite}") { call.respond(hub.members.preview(call.parameters["invite"]!!)) }
-            // A FORGE bridge (`forge switchboard connect`) polls with its own token, not a person's.
-            post("/forge/bridge/pair") { call.respond(hub.forge.pair(call.receive<BridgePairIn>())) }
-            post("/forge/bridge/poll") { call.respond(hub.forge.poll(call.bridgeToken())) }
-            post("/forge/bridge/results") {
-                hub.forge.results(call.bridgeToken(), call.receive<BridgeResults>())
-                call.respond(HttpStatusCode.NoContent)
-            }
             authenticate("bearer") {
                 get("/me") { call.respond(hub.accounts.me(call.user())) }
                 delete("/me") {
@@ -351,18 +343,6 @@ fun Application.hubModule(hub: Hub) {
                     post("/{task_id}/move") { call.respond(hub.tasks.move(call.user(), call.parameters["task_id"]!!, call.receive<MoveIn>())) }
                     post("/{task_id}/review") { call.respond(hub.tasks.review(call.user(), call.parameters["task_id"]!!, call.receive<ReviewIn>())) }
                 }
-                route("/forge") {
-                    get("/bridges") { call.respond(hub.forge.list(call.user())) }
-                    post("/bridges") { call.respond(HttpStatusCode.Created, hub.forge.create(call.user(), call.receive<BridgeIn>())) }
-                    delete("/bridges/{bridge_id}") {
-                        hub.forge.revoke(call.user(), call.parameters["bridge_id"]!!)
-                        call.respond(HttpStatusCode.NoContent)
-                    }
-                    get("/cards") { call.respond(hub.forge.board(call.user(), fresh = call.request.queryParameters["fresh"] == "true")) }
-                    post("/tickets/start") { call.respond(hub.forge.start(call.user(), call.receive<ForgeStartIn>())) }
-                    get("/runs/{run_id}") { call.respond(hub.forge.run(call.user(), call.parameters["run_id"]!!)) }
-                    post("/runs/{run_id}/decide") { call.respond(hub.forge.decide(call.user(), call.parameters["run_id"]!!, call.receive<ForgeDecideIn>())) }
-                }
                 route("/quick-commands") {
                     get { call.respond(hub.quickCommands.list(call.user())) }
                     post { call.respond(HttpStatusCode.Created, hub.quickCommands.create(call.user(), call.receive<QuickCommandIn>())) }
@@ -461,7 +441,6 @@ fun Application.hubModule(hub: Hub) {
 
 private fun ApplicationCall.user(): HubUser = principal<HubUser>() ?: throw HubException.unauthorized()
 
-private fun ApplicationCall.bridgeToken(): String? = request.headers["Authorization"]?.removePrefix("Bearer ")?.trim()
 
 private suspend fun ApplicationCall.problem(status: HttpStatusCode, p: Problem) {
     respond(status, TextContent(hubJson.encodeToString(Problem.serializer(), p), ProblemJson, status))

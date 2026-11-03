@@ -3,7 +3,7 @@
 How the Switchboard app talks to a Switchboard hub. The hub and the app both build to this contract, and
 third-party clients can too.
 
-**Version:** `0.4.0` (draft; see [`CHANGELOG.md`](CHANGELOG.md)).
+**Version:** `0.5.0` (draft; see [`CHANGELOG.md`](CHANGELOG.md)).
 
 | File | What |
 |---|---|

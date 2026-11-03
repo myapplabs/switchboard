@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0 — draft (2026-11-02)
+
+FORGE tickets on the board are removed: Switchboard doesn't include FORGE. **Breaking** for apps that used them.
+- Removed `/forge/bridges`, `/forge/bridges/{bridge_id}`, `/forge/cards`, `/forge/tickets/start`, `/forge/runs/{run_id}`,
+  `/forge/runs/{run_id}/decide`, `/forge/bridge/pair`, `/forge/bridge/poll`, `/forge/bridge/results`, the `forgeBridge`
+  security scheme, the `forge` tag and the schemas `ForgeBridge`, `ForgeCard`, `ForgeBoard`.
+- Activity actions `forge_bridge_created`, `forge_bridge_revoked`, `forge_ticket_started` and `forge_decided` are no
+  longer recorded (older entries may still show them). `Task.source` is always `switchboard`.
+- Hub: schema v15 drops the bridges table.
+
 ## 0.4.0 — draft (2026-10-21)
 
 M5, the task board (spec "Task board: agents working together"). Additive.

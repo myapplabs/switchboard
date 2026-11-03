@@ -19,7 +19,6 @@ interface AppDependencies {
     val control: ControlRepository
     val push: PushRepository
     val tasks: TasksRepository
-    val forge: ForgeRepository
     val live: LiveEvents
     /** Debug builds: the test-token sign-in is offered (passkeys need the published domain). */
     val devSignIn: Boolean

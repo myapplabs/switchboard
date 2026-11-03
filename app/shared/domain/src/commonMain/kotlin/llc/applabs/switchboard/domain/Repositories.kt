@@ -99,18 +99,6 @@ interface AgentsRepository {
     suspend fun setCoordinator(agentId: String, on: Boolean)
 }
 
-/** FORGE tickets on the board, through the person's own bridge (FORGE stays the system of record). */
-interface ForgeRepository {
-    val board: StateFlow<llc.applabs.switchboard.domain.model.ForgeBoard>
-    suspend fun refresh(fresh: Boolean = false)
-    suspend fun bridges(): List<llc.applabs.switchboard.domain.model.ForgeBridge>
-    suspend fun connect(name: String): llc.applabs.switchboard.domain.model.ForgeBridgeCreated
-    suspend fun revoke(id: String)
-    suspend fun start(project: String, ticket: String, confirmed: Boolean): llc.applabs.switchboard.domain.model.ForgeStart
-    suspend fun run(runId: String): llc.applabs.switchboard.domain.model.ForgeRun
-    suspend fun decide(runId: String, decision: String, note: String?)
-}
-
 /** The task board (M5): cards with steps on agents; only people end a card (review). */
 interface TasksRepository {
     val tasks: StateFlow<List<Task>>

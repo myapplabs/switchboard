@@ -286,7 +286,7 @@ class Members(
     /**
      * A member deletes their own account (app stores: deletion from inside the app). Their conversations go
      * (here and on the agents), as do their passkeys, devices and notification tokens, personal quick
-     * commands, grants, shares, job-result deliveries and FORGE bridges; the account is disabled and its name
+     * commands, grants, shares and job-result deliveries; the account is disabled and its name
      * replaced, so the activity log and board cards no longer name them. The owner deletes the whole hub
      * instead ([Hub.deleteAccount]).
      */
@@ -304,7 +304,6 @@ class Members(
             run("DELETE FROM agent_grant WHERE subject_kind = 'user' AND subject = ?", user.userId)
             run("DELETE FROM quick_command WHERE user_id = ?", user.userId)
             run("DELETE FROM job_delivery WHERE user_id = ?", user.userId)
-            run("UPDATE forge_bridge SET token_hash = NULL, pair_code_hash = NULL, revoked_at = COALESCE(revoked_at, ?) WHERE user_id = ?", t, user.userId)
             run("UPDATE user SET display_name = ?, disabled_at = COALESCE(disabled_at, ?) WHERE id = ?", DELETED_NAME, t, user.userId)
         }
         events.publish(listOf(user.userId), "account.revoked")
